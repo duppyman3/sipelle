@@ -1,10 +1,10 @@
-import { router } from 'expo-router';
 import { Camera, House } from 'lucide-react-native';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PressableScale } from '@/components/pressable-scale';
 import { colors, layout } from '@/constants/theme';
+import { scanMenu } from '@/data/scan-menu';
 
 /**
  * Home's bottom bar: the house is the active-screen indicator (not a
@@ -35,7 +35,7 @@ export function HomeTabBar() {
       <PressableScale
         accessibilityRole="button"
         accessibilityLabel="Scan Menu"
-        onPress={() => router.push('/results')}
+        onPress={scanMenu}
         style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
         <Camera size={26} color={colors.ink} strokeWidth={2} />
       </PressableScale>

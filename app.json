@@ -31,7 +31,8 @@
           "backgroundColor": "#FBE7E6"
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      ["expo-image-picker", { "cameraPermission": "Sipelle uses your camera to photograph drink menus." }]
     ],
     "experiments": {
       "typedRoutes": true,

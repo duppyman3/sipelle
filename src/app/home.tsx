@@ -11,6 +11,7 @@ import { PressableScale } from '@/components/pressable-scale';
 import { enterSoft } from '@/constants/motion';
 import { colors, fonts, homeGradient, layout, shadows } from '@/constants/theme';
 import { CATEGORIES } from '@/data/menu';
+import { scanMenu } from '@/data/scan-menu';
 import { clearFirstName, getSavedFirstName } from '@/data/user-name';
 
 export default function Home() {
@@ -71,7 +72,7 @@ export default function Home() {
           <PressableScale
             accessibilityRole="button"
             accessibilityLabel="Scan Menu"
-            onPress={() => router.push('/results')}
+            onPress={scanMenu}
             style={{
               alignSelf: 'center',
               marginTop: 28,
