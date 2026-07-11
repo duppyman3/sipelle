@@ -1,0 +1,36 @@
+/* Sipelle — color tokens. Sampled from the three Stitch screens. */
+:root {
+  /* Base washes (screen backgrounds) */
+  --wash-blush: #F9E4E6;      /* home pink wash */
+  --wash-peach: #FBE9D9;      /* home/results peach wash */
+  --wash-mint: #D8EFE4;       /* home mint wash */
+  --wash-powder: #DCE6F2;     /* home blue wash */
+  --wash-splash: #FBE7E6;     /* splash flat pink */
+  --wash-cream: #F7EDE0;      /* results screen base */
+
+  /* Surfaces */
+  --surface-card: #F3E7D8;    /* results drink card */
+  --surface-tile: #FFFFFF;    /* drink thumbnail tile */
+  --surface-pill: #F7EDDD;    /* price pill */
+
+  /* Category chip fills */
+  --chip-mint: #C9E9DC;
+  --chip-peach: #F8DDB4;
+  --chip-pink: #F5C3CD;
+
+  /* Ink & text */
+  --ink: #2B2528;             /* headings, icons, stars */
+  --text-body: #4A4245;       /* descriptions */
+  --text-muted: #9B8F91;
+
+  /* Accents */
+  --accent-gold: #D8B56A;     /* splash flourish lines */
+  --accent-rose: #E9A6B3;     /* active tab icon */
+
+  /* Semantic aliases */
+  --bg-app: var(--wash-cream);
+  --bg-splash: var(--wash-splash);
+  --text-heading: var(--ink);
+  --tab-active: var(--accent-rose);
+  --tab-inactive: var(--text-muted);
+}

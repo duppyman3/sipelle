@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sipelle — design system spec sheet</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { margin: 0; padding: 48px 40px 96px; background: #FBF6F1; font-family: var(--font-body); color: var(--ink); }
+  h2 { font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin: 48px 0 16px; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+  .sw { display: flex; flex-direction: column; gap: 6px; align-items: center; font-size: 11px; color: var(--text-body); }
+  .sw i { width: 84px; height: 56px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.06); display: block; }
+  .sw code { font-size: 11px; }
+  .press { transition: transform var(--duration-press) var(--ease-soft); cursor: pointer; }
+  .press:active { transform: scale(var(--press-scale)); }
+</style>
+</head>
+<body>
+
+<div style="display: flex; align-items: baseline; gap: 14px;">
+  <span style="font-family: var(--font-serif); font-size: 40px; font-weight: 600;">sipelle</span>
+  <span style="font-size: 13px; color: var(--text-muted);">design system — spec sheet</span>
+</div>
+
+<h2>Washes</h2>
+<div class="row">
+  <span class="sw"><i style="background: var(--wash-blush)"></i><code>--wash-blush</code></span>
+  <span class="sw"><i style="background: var(--wash-peach)"></i><code>--wash-peach</code></span>
+  <span class="sw"><i style="background: var(--wash-mint)"></i><code>--wash-mint</code></span>
+  <span class="sw"><i style="background: var(--wash-powder)"></i><code>--wash-powder</code></span>
+  <span class="sw"><i style="background: var(--wash-splash)"></i><code>--wash-splash</code></span>
+  <span class="sw"><i style="background: var(--wash-cream)"></i><code>--wash-cream</code></span>
+</div>
+
+<h2>Surfaces, ink &amp; accents</h2>
+<div class="row">
+  <span class="sw"><i style="background: var(--surface-card)"></i><code>--surface-card</code></span>
+  <span class="sw"><i style="background: var(--surface-pill)"></i><code>--surface-pill</code></span>
+  <span class="sw"><i style="background: var(--chip-mint)"></i><code>--chip-mint</code></span>
+  <span class="sw"><i style="background: var(--chip-peach)"></i><code>--chip-peach</code></span>
+  <span class="sw"><i style="background: var(--chip-pink)"></i><code>--chip-pink</code></span>
+  <span class="sw"><i style="background: var(--ink)"></i><code>--ink</code></span>
+  <span class="sw"><i style="background: var(--accent-gold)"></i><code>--accent-gold</code></span>
+  <span class="sw"><i style="background: var(--accent-rose)"></i><code>--accent-rose</code></span>
+</div>
+
+<h2>Type</h2>
+<div style="display: flex; flex-direction: column; gap: 10px;">
+  <div style="font-family: var(--font-serif); font-size: var(--text-screen-title); font-weight: 600;">Union Square <span style="font-size: 13px; font-family: var(--font-body); font-weight: 400; color: var(--text-muted);">serif / screen title / 44px</span></div>
+  <div style="font-family: var(--font-hand); font-size: var(--text-greeting); font-weight: 600; line-height: 1;">Hello John! <span style="font-size: 13px; font-family: var(--font-body); font-weight: 400; color: var(--text-muted);">hand / greeting / 72px</span></div>
+  <div style="font-family: var(--font-serif); font-size: var(--text-drink-name); font-weight: 600;">Aperol Spritz <span style="font-size: 13px; font-family: var(--font-body); font-weight: 400; color: var(--text-muted);">serif / drink name / 32px</span></div>
+  <div style="font-family: var(--font-body); font-size: var(--text-body-size); color: var(--text-body);">Refreshing with prosecco and orange <span style="font-size: 13px; color: var(--text-muted);">body / description / 19px</span></div>
+</div>
+
+<h2>DrinkCard</h2>
+<div style="max-width: 660px; background: var(--wash-cream); padding: 24px; border-radius: 16px; display: flex; flex-direction: column; gap: var(--card-gap);">
+  <div class="press" style="display: flex; gap: var(--space-4); align-items: flex-start; background: var(--surface-card); box-shadow: var(--shadow-card); border-radius: var(--radius-card); padding: var(--card-padding);">
+    <img src="assets/drink-aperol-spritz.png" alt="" style="width: 120px; height: 126px; object-fit: cover; background: var(--surface-tile); border-radius: var(--radius-tile); box-shadow: var(--shadow-tile); flex-shrink: 0;">
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 6px; padding-top: 4px;">
+      <div style="display: flex; align-items: flex-start; gap: var(--space-3);">
+        <span style="flex: 1; font-family: var(--font-serif); font-weight: 600; font-size: var(--text-drink-name); line-height: var(--leading-tight);">Aperol Spritz</span>
+        <span style="background: var(--surface-pill); box-shadow: var(--shadow-pill); border-radius: var(--radius-pill); padding: 8px 14px; font-weight: 700; font-size: var(--text-price); white-space: nowrap;">$14</span>
+      </div>
+      <div style="font-size: 22px; letter-spacing: 3px;">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+      <div style="font-size: var(--text-body-size); line-height: var(--leading-body); color: var(--text-body);">Refreshing with prosecco and orange</div>
+    </div>
+  </div>
+  <div class="press" style="display: flex; gap: var(--space-4); align-items: flex-start; background: var(--surface-card); box-shadow: var(--shadow-card); border-radius: var(--radius-card); padding: var(--card-padding);">
+    <img src="assets/drink-dirty-martini.png" alt="" style="width: 120px; height: 126px; object-fit: cover; background: var(--surface-tile); border-radius: var(--radius-tile); box-shadow: var(--shadow-tile); flex-shrink: 0;">
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 6px; padding-top: 4px;">
+      <div style="display: flex; align-items: flex-start; gap: var(--space-3);">
+        <span style="flex: 1; font-family: var(--font-serif); font-weight: 600; font-size: var(--text-drink-name); line-height: var(--leading-tight);">Dirty Martini</span>
+        <span style="background: var(--surface-pill); box-shadow: var(--shadow-pill); border-radius: var(--radius-pill); padding: 8px 14px; font-weight: 700; font-size: var(--text-price); white-space: nowrap;">$16</span>
+      </div>
+      <div style="font-size: 22px; letter-spacing: 3px;">&#9733;&#9733;&#9733;&#9733;&#9734;</div>
+      <div style="font-size: var(--text-body-size); line-height: var(--leading-body); color: var(--text-body);">Classic gin with an olive twist</div>
+    </div>
+  </div>
+</div>
+
+<h2>CategoryChip · ScanAction</h2>
+<div class="row" style="align-items: center; gap: 40px;">
+  <span class="press" style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+    <img src="assets/category-citrus.png" alt="" style="width: 150px; height: 150px; border-radius: var(--radius-full);">
+    <span style="font-family: var(--font-hand); font-weight: 600; font-size: var(--text-label);">Citrus</span>
+  </span>
+  <span class="press" style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+    <img src="assets/category-beer.png" alt="" style="width: 150px; height: 150px; border-radius: var(--radius-full);">
+    <span style="font-family: var(--font-hand); font-weight: 600; font-size: var(--text-label);">Beer</span>
+  </span>
+  <span class="press" style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+    <img src="assets/category-exotic.png" alt="" style="width: 150px; height: 150px; border-radius: var(--radius-full);">
+    <span style="font-family: var(--font-hand); font-weight: 600; font-size: var(--text-label);">Exotic</span>
+  </span>
+  <img class="press" src="assets/scan-menu-blob.png" alt="Scan Menu" style="width: 220px; height: 220px;">
+</div>
+
+<h2>ScreenHeader · TabBar</h2>
+<div style="max-width: 480px; border-radius: 16px; overflow: hidden; border: 1px solid rgba(0,0,0,0.06);">
+  <div style="background: var(--wash-cream); padding: 12px var(--screen-gutter) 20px;">
+    <div style="font-size: 28px; line-height: 1; padding: 8px 0;">&#8592;</div>
+    <div style="text-align: center; font-family: var(--font-serif); font-weight: 600; font-size: var(--text-screen-title); line-height: var(--leading-tight);">Union Square</div>
+  </div>
+  <div style="display: flex; align-items: center; justify-content: space-around; height: var(--tabbar-height); background: #FFFFFF; border-top: 1px solid rgba(0,0,0,0.05);">
+    <img src="https://unpkg.com/lucide-static@0.462.0/icons/house.svg" alt="Home" style="width: 30px; filter: invert(76%) sepia(18%) saturate(680%) hue-rotate(300deg) brightness(98%);">
+    <img src="https://unpkg.com/lucide-static@0.462.0/icons/search.svg" alt="Search" style="width: 30px; opacity: 0.45;">
+    <img src="https://unpkg.com/lucide-static@0.462.0/icons/circle-user-round.svg" alt="Profile" style="width: 30px; opacity: 0.45;">
+  </div>
+</div>
+<div style="margin-top: 10px; font-size: 12px; color: var(--text-muted);">Tab icons: Lucide (house / search / circle-user-round), active tint <code>--tab-active</code>. Loaded from CDN here.</div>
+
+</body>
+</html>

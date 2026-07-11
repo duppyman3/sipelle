@@ -1,0 +1,21 @@
+/* Sipelle — spacing & radii tokens. */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --screen-gutter: 20px;      /* card inset from screen edge */
+  --card-gap: 28px;           /* vertical gap between drink cards */
+  --card-padding: 18px;
+
+  --radius-card: 28px;        /* drink card */
+  --radius-tile: 26px;        /* drink thumbnail */
+  --radius-pill: 16px;        /* price pill */
+  --radius-full: 999px;       /* chips, tab icons */
+
+  --tap-min: 44px;            /* minimum hit target */
+  --tabbar-height: 84px;
+}

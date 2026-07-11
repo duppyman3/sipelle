@@ -1,0 +1,24 @@
+/* Sipelle — typography tokens.
+   No font binaries were provided; nearest Google Fonts matches are used.
+   - Serif display (splash wordmark, "Union Square", drink names) ≈ Playfair Display
+   - Casual hand-written (home "Sipelle", "Hello John!", labels) ≈ Caveat
+   - Body sans (descriptions, prices) ≈ system sans (SF Pro on iOS) */
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Caveat:wght@500;600&display=swap");
+
+:root {
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-hand: "Caveat", "Comic Sans MS", cursive;
+  --font-body: -apple-system, "SF Pro Text", Helvetica, Arial, sans-serif;
+
+  /* Scale (from 768px-wide screens; 1px here = 2pt @1x on device) */
+  --text-splash-wordmark: 64px;   /* "sipelle", serif, lowercase */
+  --text-screen-title: 44px;      /* "Union Square", serif */
+  --text-greeting: 72px;          /* "Hello John!", hand */
+  --text-drink-name: 32px;        /* serif, 600 */
+  --text-price: 26px;             /* body, 700 */
+  --text-body-size: 19px;         /* descriptions */
+  --text-label: 24px;             /* category labels, hand */
+
+  --leading-tight: 1.05;
+  --leading-body: 1.35;
+}

@@ -1,0 +1,11 @@
+/* Sipelle — shadows & effects. Everything is soft; no hard borders anywhere. */
+:root {
+  --shadow-card: 0 10px 24px rgba(90, 70, 50, 0.14);   /* drink cards */
+  --shadow-pill: 0 4px 10px rgba(90, 70, 50, 0.18);    /* price pill */
+  --shadow-tile: 0 2px 8px rgba(90, 70, 50, 0.10);     /* thumbnail tile */
+
+  /* Press state: gentle scale, no color shift */
+  --press-scale: 0.97;
+  --ease-soft: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --duration-press: 120ms;
+}
