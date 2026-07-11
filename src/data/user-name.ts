@@ -21,3 +21,10 @@ export function saveFirstName(name: string): void {
   }
   localStorage.setItem(STORAGE_KEY, name.trim());
 }
+
+export function clearFirstName(): void {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+  localStorage.removeItem(STORAGE_KEY);
+}

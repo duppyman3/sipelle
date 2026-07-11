@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect, router } from 'expo-router';
-import { Camera } from 'lucide-react-native';
+import { Camera, RotateCcw } from 'lucide-react-native';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,7 +11,7 @@ import { PressableScale } from '@/components/pressable-scale';
 import { enterSoft } from '@/constants/motion';
 import { colors, fonts, homeGradient, layout, shadows } from '@/constants/theme';
 import { CATEGORIES } from '@/data/menu';
-import { getSavedFirstName } from '@/data/user-name';
+import { clearFirstName, getSavedFirstName } from '@/data/user-name';
 
 export default function Home() {
   const insets = useSafeAreaInsets();
@@ -92,6 +92,28 @@ export default function Home() {
         </Animated.View>
       </ScrollView>
       <HomeTabBar />
+      {/* Testing-only: clears the saved name and restarts the first-run flow. */}
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityLabel="Reset saved name"
+        onPress={() => {
+          clearFirstName();
+          router.replace('/');
+        }}
+        style={{
+          position: 'absolute',
+          bottom: layout.tabBarHeight + insets.bottom + 12,
+          right: 14,
+          width: 44,
+          height: 44,
+          borderRadius: 999,
+          backgroundColor: colors.tile,
+          boxShadow: shadows.tile,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+        <RotateCcw size={20} color={colors.ink} strokeWidth={2} />
+      </PressableScale>
     </View>
   );
 }
