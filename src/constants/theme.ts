@@ -1,65 +1,40 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Sipelle design tokens. Values are device points taken from the design
+ * handoff prototype (design/design_handoff_sipelle_app) — the app is
+ * light-only, so there is no dark palette.
  */
 
-import '@/global.css';
-
-import { Platform } from 'react-native';
-
-export const Colors = {
-  light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
-  },
-  dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-  },
+export const colors = {
+  ink: '#2B2528',
+  body: '#4A4245',
+  muted: '#9B8F91',
+  washSplash: '#FBE7E6',
+  washCream: '#F7EDE0',
+  card: '#F3E7D8',
+  tile: '#FFFFFF',
+  pill: '#F7EDDD',
+  rose: '#E9A6B3',
+  tabInactive: 'rgba(43, 37, 40, 0.4)',
 } as const;
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
-
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
-
-export const Spacing = {
-  half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
+export const homeGradient = {
+  colors: ['#E4F5FC', '#F9E4E6', '#FBE9D9', '#FFFFFF'],
+  locations: [0, 0.34, 0.62, 1],
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const fonts = {
+  serif: 'PlayfairDisplay_600SemiBold',
+  hand: 'Caveat_600SemiBold',
+} as const;
+
+export const shadows = {
+  card: '0 10px 24px rgba(90, 70, 50, 0.14)',
+  tile: '0 2px 8px rgba(90, 70, 50, 0.10)',
+  pill: '0 4px 10px rgba(90, 70, 50, 0.18)',
+  toast: '0 6px 16px rgba(0, 0, 0, 0.2)',
+} as const;
+
+export const layout = {
+  gutter: 20,
+  tabBarHeight: 72,
+} as const;
