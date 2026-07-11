@@ -1,11 +1,15 @@
 // Static prototype data. A real build replaces this with the scanned venue's
 // menu, per the design handoff's state-management notes.
 
-export type Category = {
-  id: string;
-  label: string;
-  image: number;
-};
+import type { CategoryArtKind } from '@/components/category-art';
+
+// Chip artwork is either a raster crop from the design handoff (`image`) or
+// a palette-matched vector drawing (`art`) for categories the handoff never
+// illustrated.
+export type Category = { id: string; label: string } & (
+  | { image: number }
+  | { art: CategoryArtKind }
+);
 
 export type Drink = {
   id: string;
@@ -31,6 +35,16 @@ export const CATEGORIES: Category[] = [
     id: 'exotic',
     label: 'Exotic',
     image: require('@/assets/images/sipelle/category-exotic.png'),
+  },
+  {
+    id: 'cocktails',
+    label: 'Cocktails',
+    art: 'cocktails',
+  },
+  {
+    id: 'wine',
+    label: 'Wine',
+    art: 'wine',
   },
 ];
 

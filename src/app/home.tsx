@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Camera } from 'lucide-react-native';
@@ -6,6 +5,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CategoryChip } from '@/components/category-chip';
 import { HomeTabBar } from '@/components/home-tab-bar';
 import { PressableScale } from '@/components/pressable-scale';
 import { enterSoft } from '@/constants/motion';
@@ -51,32 +51,14 @@ export default function Home() {
           </View>
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 28 }}>
-            {CATEGORIES.map((category) => (
-              <PressableScale
-                key={category.id}
-                accessibilityRole="button"
-                accessibilityLabel={`${category.label} drinks`}
-                onPress={() => router.push('/results')}
-                style={{ width: 96, alignItems: 'center', gap: 8 }}>
-                <View
-                  style={{
-                    width: 92,
-                    height: 92,
-                    borderRadius: 999,
-                    backgroundColor: colors.tile,
-                    boxShadow: shadows.tile,
-                    overflow: 'hidden',
-                  }}>
-                  <Image
-                    source={category.image}
-                    contentFit="cover"
-                    style={{ width: '100%', height: '100%' }}
-                  />
-                </View>
-                <Text style={{ fontFamily: fonts.hand, fontSize: 22, lineHeight: 22, color: colors.ink }}>
-                  {category.label}
-                </Text>
-              </PressableScale>
+            {CATEGORIES.slice(0, 3).map((category) => (
+              <CategoryChip key={category.id} category={category} />
+            ))}
+          </View>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 31, marginTop: 20 }}>
+            {CATEGORIES.slice(3).map((category) => (
+              <CategoryChip key={category.id} category={category} />
             ))}
           </View>
 
