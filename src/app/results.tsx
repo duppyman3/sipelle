@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DrinkCard } from '@/components/drink-card';
 import { PressableScale } from '@/components/pressable-scale';
+import { ResultsWash } from '@/components/results-wash';
 import { Toast, type ToastData } from '@/components/toast';
 import { enterSoft } from '@/constants/motion';
 import { colors, fonts, layout } from '@/constants/theme';
@@ -39,6 +40,7 @@ export default function Results() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.washCream }}>
+      <ResultsWash />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
