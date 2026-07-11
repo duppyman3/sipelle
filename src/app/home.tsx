@@ -6,7 +6,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { DecorativeTabBar } from '@/components/decorative-tab-bar';
+import { HomeTabBar } from '@/components/home-tab-bar';
 import { PressableScale } from '@/components/pressable-scale';
 import { enterSoft } from '@/constants/motion';
 import { colors, fonts, homeGradient, layout, shadows } from '@/constants/theme';
@@ -103,7 +103,7 @@ export default function Home() {
           </PressableScale>
         </Animated.View>
       </ScrollView>
-      <DecorativeTabBar />
+      <HomeTabBar />
     </View>
   );
 }
