@@ -36,6 +36,7 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="index" options={{ contentStyle: { backgroundColor: colors.washSplash } }} />
+        <Stack.Screen name="welcome" options={{ contentStyle: { backgroundColor: colors.washMint } }} />
         <Stack.Screen name="home" options={{ contentStyle: { backgroundColor: colors.tile } }} />
         <Stack.Screen name="results" options={{ contentStyle: { backgroundColor: colors.washCream } }} />
       </Stack>

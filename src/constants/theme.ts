@@ -10,6 +10,7 @@ export const colors = {
   muted: '#9B8F91',
   washSplash: '#FBE7E6',
   washCream: '#F7EDE0',
+  washMint: '#D8EFE4',
   card: '#F3E7D8',
   tile: '#FFFFFF',
   pill: '#F7EDDD',

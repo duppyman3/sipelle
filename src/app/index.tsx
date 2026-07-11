@@ -5,6 +5,7 @@ import Animated from 'react-native-reanimated';
 
 import { enterSplashCaption } from '@/constants/motion';
 import { colors } from '@/constants/theme';
+import { getSavedFirstName } from '@/data/user-name';
 
 export default function Splash() {
   return (
@@ -12,7 +13,7 @@ export default function Splash() {
       accessibilityRole="button"
       accessibilityLabel="Tap to begin"
       style={{ flex: 1, backgroundColor: colors.washSplash }}
-      onPress={() => router.replace('/home')}>
+      onPress={() => router.replace(getSavedFirstName() ? '/home' : '/welcome')}>
       <Image
         source={require('@/assets/images/sipelle/splash-full.png')}
         contentFit="cover"

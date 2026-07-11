@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { Camera } from 'lucide-react-native';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -11,9 +11,15 @@ import { PressableScale } from '@/components/pressable-scale';
 import { enterSoft } from '@/constants/motion';
 import { colors, fonts, homeGradient, layout, shadows } from '@/constants/theme';
 import { CATEGORIES } from '@/data/menu';
+import { getSavedFirstName } from '@/data/user-name';
 
 export default function Home() {
   const insets = useSafeAreaInsets();
+  const firstName = getSavedFirstName();
+
+  if (!firstName) {
+    return <Redirect href="/welcome" />;
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -42,7 +48,7 @@ export default function Home() {
                 marginTop: 14,
                 color: colors.ink,
               }}>
-              Hello John!
+              Hello {firstName}!
             </Text>
             <Text
               style={{ fontSize: 13, lineHeight: 18, color: colors.body, maxWidth: 150, marginTop: 8 }}>
