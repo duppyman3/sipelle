@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { Camera } from 'lucide-react-native';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,35 +30,27 @@ export default function Home() {
           paddingBottom: layout.tabBarHeight + insets.bottom + 24,
         }}>
         <Animated.View entering={enterSoft}>
-          <View
-            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <View style={{ flexShrink: 1, paddingTop: 6 }}>
-              <Text style={{ fontFamily: fonts.hand, fontSize: 34, lineHeight: 34, color: colors.ink }}>
-                Sipelle
-              </Text>
-              <Text
-                style={{
-                  fontFamily: fonts.hand,
-                  fontSize: 44,
-                  lineHeight: 46,
-                  marginTop: 14,
-                  color: colors.ink,
-                }}>
-                Hello John!
-              </Text>
-              <Text
-                style={{ fontSize: 13, lineHeight: 18, color: colors.body, maxWidth: 150, marginTop: 8 }}>
-                What are you in the mood for today?
-              </Text>
-            </View>
-            <Image
-              source={require('@/assets/images/sipelle/hero-cocktail.png')}
-              contentFit="cover"
-              style={{ width: 210, height: 233, marginTop: -6, marginRight: -10 }}
-            />
+          <View style={{ paddingTop: 6 }}>
+            <Text style={{ fontFamily: fonts.hand, fontSize: 34, lineHeight: 34, color: colors.ink }}>
+              Sipelle
+            </Text>
+            <Text
+              style={{
+                fontFamily: fonts.hand,
+                fontSize: 44,
+                lineHeight: 46,
+                marginTop: 14,
+                color: colors.ink,
+              }}>
+              Hello John!
+            </Text>
+            <Text
+              style={{ fontSize: 13, lineHeight: 18, color: colors.body, maxWidth: 150, marginTop: 8 }}>
+              What are you in the mood for today?
+            </Text>
           </View>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 18 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 28 }}>
             {CATEGORIES.map((category) => (
               <PressableScale
                 key={category.id}
@@ -91,12 +84,22 @@ export default function Home() {
             accessibilityRole="button"
             accessibilityLabel="Scan Menu"
             onPress={() => router.push('/results')}
-            style={{ alignSelf: 'center', marginTop: 10 }}>
-            <Image
-              source={require('@/assets/images/sipelle/scan-menu-blob.png')}
-              contentFit="contain"
-              style={{ width: 190, height: 190 }}
-            />
+            style={{
+              alignSelf: 'center',
+              marginTop: 28,
+              width: 160,
+              height: 160,
+              borderRadius: 999,
+              backgroundColor: colors.tile,
+              boxShadow: shadows.tile,
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+            }}>
+            <Camera size={36} color={colors.ink} strokeWidth={2} />
+            <Text style={{ fontFamily: fonts.hand, fontSize: 24, lineHeight: 26, color: colors.ink }}>
+              Scan Menu
+            </Text>
           </PressableScale>
         </Animated.View>
       </ScrollView>
