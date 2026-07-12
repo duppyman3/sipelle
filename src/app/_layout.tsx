@@ -1,12 +1,13 @@
 import { Caveat_600SemiBold } from '@expo-google-fonts/caveat';
 import { PlayfairDisplay_600SemiBold } from '@expo-google-fonts/playfair-display';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { trackScreen } from '@/analytics/posthog';
 import { colors } from '@/constants/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -24,6 +25,12 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  const pathname = usePathname();
+
+  useEffect(() => {
+    trackScreen(pathname);
+  }, [pathname]);
 
   if (!fontsLoaded && !fontError) {
     return null;

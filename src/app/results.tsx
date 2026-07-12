@@ -6,6 +6,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withRepeat, with
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Ellipse } from 'react-native-svg';
 
+import { track } from '@/analytics/posthog';
 import { PressableScale } from '@/components/pressable-scale';
 import { ResultsWash } from '@/components/results-wash';
 import { ScannedDrinkCard } from '@/components/scanned-drink-card';
@@ -171,7 +172,13 @@ function ReadyResults({ session, initialFilter }: { session: ScanSession; initia
             }}>
             {session.venueName ?? 'Your Menu'}
           </Text>
-          <FilterRow filter={filter} onChange={setFilter} />
+          <FilterRow
+            filter={filter}
+            onChange={(id) => {
+              track('category_selected', { category: id, screen: 'results' });
+              setFilter(id);
+            }}
+          />
           <NutritionPill />
           {drinks.length > 0 ? (
             <View style={{ gap: 20, marginTop: 24 }}>
@@ -238,7 +245,14 @@ function NutritionPill() {
         accessibilityRole="button"
         accessibilityState={{ selected: showing }}
         accessibilityLabel={label}
-        onPress={() => (premium ? setShowNutrition(!showNutrition) : router.push('/paywall'))}
+        onPress={() => {
+          if (premium) {
+            setShowNutrition(!showNutrition);
+          } else {
+            track('paywall_viewed', { source: 'nutrition_pill' });
+            router.push('/paywall');
+          }
+        }}
         style={{
           backgroundColor: showing ? colors.ink : colors.pill,
           borderRadius: 999,

@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Text, View } from 'react-native';
 
+import { track } from '@/analytics/posthog';
 import { CategoryArt } from '@/components/category-art';
 import { PressableScale } from '@/components/pressable-scale';
 import { colors, fonts, shadows } from '@/constants/theme';
@@ -12,7 +13,10 @@ export function CategoryChip({ category }: { category: Category }) {
     <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`${category.label} drinks`}
-      onPress={() => router.push({ pathname: '/results', params: { category: category.id } })}
+      onPress={() => {
+        track('category_selected', { category: category.id, screen: 'home' });
+        router.push({ pathname: '/results', params: { category: category.id } });
+      }}
       style={{ width: 96, alignItems: 'center', gap: 8 }}>
       <View
         style={{

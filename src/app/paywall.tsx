@@ -6,6 +6,7 @@ import { ScrollView, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { track } from '@/analytics/posthog';
 import { PressableScale } from '@/components/pressable-scale';
 import { ResultsWash } from '@/components/results-wash';
 import { enterSoft } from '@/constants/motion';
@@ -37,13 +38,16 @@ export default function Paywall() {
     }
     setNotice(null);
     setBusy('purchase');
+    track('purchase_started');
     const result = await purchasePremium();
     if (result.ok) {
+      track('purchase_result', { outcome: 'success' });
       // Flip the toggle on before leaving so results inks in the nutrition live.
       setShowNutrition(true);
       close();
       return;
     }
+    track('purchase_result', { outcome: result.reason });
     if (result.reason === 'failed') {
       setNotice('The purchase could not be completed. Please try again.');
     }
@@ -57,6 +61,9 @@ export default function Paywall() {
     setNotice(null);
     setBusy('restore');
     const result = await restorePurchases();
+    track('restore_result', {
+      outcome: result.ok ? (result.restored ? 'restored' : 'nothing_to_restore') : 'failed',
+    });
     if (result.ok && result.restored) {
       // Restore only re-grants entitlement; the toggle keeps its own state.
       close();

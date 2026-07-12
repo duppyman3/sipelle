@@ -32,7 +32,13 @@
         }
       ],
       "expo-sqlite",
-      ["expo-image-picker", { "cameraPermission": "Sipelle uses your camera to photograph drink menus." }]
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Sipelle uses your camera to photograph drink menus."
+        }
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,

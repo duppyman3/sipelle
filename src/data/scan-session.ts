@@ -2,7 +2,8 @@ import { useSyncExternalStore } from 'react';
 
 import { generateDrinkImage } from '@/ai/drink-image';
 import { scanMenuPhoto, type DrinkNutrition, type MenuScan } from '@/ai/menu-scan';
-import { hasAiBackend } from '@/ai/backend';
+import { hasAiBackend, AiError } from '@/ai/backend';
+import { track, trackError } from '@/analytics/posthog';
 import type { DrinkCategory } from '@/data/menu';
 
 // In-memory store for the current app session. Drinks and the venue name
@@ -92,7 +93,11 @@ async function generateOne(id: string): Promise<void> {
   try {
     const imageUri = await generateDrinkImage(drink);
     updateDrink(id, { imageStatus: 'done', imageUri });
-  } catch {
+  } catch (error) {
+    track('drink_image_failed', { status: error instanceof AiError ? error.status : -1 });
+    if (!(error instanceof AiError)) {
+      trackError(error);
+    }
     updateDrink(id, { imageStatus: 'error' });
   }
 }
@@ -133,22 +138,29 @@ async function run(): Promise<void> {
     return;
   }
   setSession({ ...session, activity: { status: 'scanning' } });
+  track('scan_started', { existing_drink_count: session.drinks.length });
   let scan: MenuScan;
   try {
     scan = await scanMenuPhoto(base64);
   } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Something went wrong scanning the menu.';
+    track('scan_failed', { status: error instanceof AiError ? error.status : -1, message });
+    if (!(error instanceof AiError)) {
+      // AiError is an expected operational failure; anything else is a bug.
+      trackError(error);
+    }
     // Only the newest scan owns the status, so an older overlapped scan can't
     // flip it to error under a fresher one.
     if (token === scanToken) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Something went wrong scanning the menu.';
       setSession({ ...session, activity: { status: 'error', message } });
     }
     return;
   }
   if (scan.drinks.length === 0) {
+    track('scan_empty');
     // Reserved for a genuinely unreadable photo. An all-duplicates rescan lands
     // below with an empty `fresh` and settles quietly to idle instead.
     if (token === scanToken) {
@@ -174,6 +186,7 @@ async function run(): Promise<void> {
       fresh.push({ ...drink, id: `drink-${++drinkSeq}`, imageStatus: 'queued', imageUri: null });
     }
   }
+  track('scan_succeeded', { drink_count: scan.drinks.length, new_drink_count: fresh.length, venue_detected: scan.venueName != null });
   setSession({
     activity: token === scanToken ? { status: 'idle' } : session.activity,
     venueName: session.venueName ?? scan.venueName,

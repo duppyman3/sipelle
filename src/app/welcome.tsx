@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { track } from '@/analytics/posthog';
 import { CategoryArt } from '@/components/category-art';
 import { PressableScale } from '@/components/pressable-scale';
 import { enterSoft } from '@/constants/motion';
@@ -24,6 +25,7 @@ export default function Welcome() {
       return; // the keyboard's "done" key fires regardless of content
     }
     saveFirstName(trimmed);
+    track('onboarding_completed', { $set: { first_name: trimmed } });
     router.replace('/home');
   };
 

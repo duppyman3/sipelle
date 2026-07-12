@@ -7,6 +7,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } fr
 import Svg, { Ellipse } from 'react-native-svg';
 
 import { type DrinkNutrition } from '@/ai/menu-scan';
+import { track } from '@/analytics/posthog';
 import { PressableScale } from '@/components/pressable-scale';
 import { softEasing } from '@/constants/motion';
 import { colors, fonts, shadows } from '@/constants/theme';
@@ -100,7 +101,10 @@ function NutritionLine({ nutrition }: { nutrition: DrinkNutrition }) {
           accessibilityRole="button"
           accessibilityLabel="Unlock nutrition"
           hitSlop={8}
-          onPress={() => router.push('/paywall')}
+          onPress={() => {
+            track('paywall_viewed', { source: 'drink_card' });
+            router.push('/paywall');
+          }}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <Lock size={12} color={colors.muted} strokeWidth={2} />
           <Text style={{ fontSize: 13, color: colors.muted }}>≈ ··· cal</Text>
