@@ -28,6 +28,13 @@ In app code, the tokens are already ported to `src/constants/theme.ts` (colors, 
 - **Data**: static venue/menu data in `src/data/menu.ts` (placeholder for the future scan flow).
 - **Checks** (no test framework yet): `npx tsc --noEmit`, `npx expo lint` (eslint-config-expo), bundle smoke tests via `npx expo export --platform android` and `--platform web`.
 
+## Backend (Supabase)
+
+- **Project**: dedicated Supabase project **Sipelle** — ref `cmoaqgkzotvuvkqeyhhq`, URL https://cmoaqgkzotvuvkqeyhhq.supabase.co (Postgres 17, us-east-1, created 2026-07-12). Intended home for the server-side scan flow; schema starts empty.
+- **Access for agents**: use the Supabase MCP tools (`mcp__supabase__*`) with that project id for all SQL, migrations, and edge functions — no connection string needed. The same org holds unrelated projects (MenuGallery, CurlFreely, FFLTransferFees); never target those from this repo.
+- **Access for the app**: only ever the project URL + publishable (anon) key via `@supabase/supabase-js`, with Row Level Security on every table. The direct Postgres connection string (`postgres` role) bypasses RLS and must never appear in the repo, the Expo bundle, or client code.
+- **Secrets**: `.gitignore` only covers `.env*.local` — a plain `.env` WOULD be committed. Keep local secrets in `.env.local`.
+
 
 
 
