@@ -9,7 +9,7 @@ import { handleOptions, json } from '../_shared/cors.ts';
 import { requirePublishableKey } from '../_shared/auth.ts';
 import { clientIp, consumeQuota } from '../_shared/rate-limit.ts';
 import { postOpenRouter, UpstreamError } from '../_shared/openrouter.ts';
-import { buildScanBody, normalizeMenuScan, type ChatCompletion } from '../_shared/menu.ts';
+import { buildScanBody, normalizeMenuScan, signMenuScan, type ChatCompletion } from '../_shared/menu.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -51,9 +51,20 @@ Deno.serve(async (req) => {
     return json(400, { error: 'Invalid request.' });
   }
 
+  // Checked before the quota RPC so a misconfigured deploy doesn't burn a user's quota.
+  if (!Deno.env.get('OPENROUTER_API_KEY') || !Deno.env.get('DRINK_SIGNING_SECRET')) {
+    return json(500, { error: 'The AI service is not configured yet.' });
+  }
+
+  // No trustworthy IP means no IP quota, so refuse rather than let the caller past it.
+  const ip = clientIp(req);
+  if (ip === null) {
+    return json(400, { error: 'Invalid request.' });
+  }
+
   let quota;
   try {
-    quota = await consumeQuota({ deviceId, ip: clientIp(req), kind: 'scan' });
+    quota = await consumeQuota({ deviceId, ip, kind: 'scan' });
   } catch {
     return json(500, { error: 'Could not check usage limits. Try again shortly.' });
   }
@@ -61,18 +72,17 @@ Deno.serve(async (req) => {
     return json(429, { error: 'Daily scan limit reached. Try again tomorrow.' });
   }
 
-  if (!Deno.env.get('OPENROUTER_API_KEY')) {
-    return json(500, { error: 'The AI service is not configured yet.' });
-  }
-
   const deadline = Date.now() + HARD_DEADLINE_MS;
   let response: ChatCompletion;
   try {
     response = await runScan(imageBase64, deadline);
   } catch (err) {
+    // Upstream text can name models, providers, and our billing state — log it, don't relay it.
     if (err instanceof UpstreamError) {
-      return json(err.status === 0 ? 504 : 502, { error: err.message });
+      console.error('openrouter upstream failure', { status: err.status, message: err.message });
+      return json(err.status === 0 ? 504 : 502, { error: 'The menu could not be read. Try a clearer photo.' });
     }
+    console.error('scan failure', err);
     return json(502, { error: 'The menu could not be read. Try a clearer photo.' });
   }
 
@@ -88,7 +98,7 @@ Deno.serve(async (req) => {
     return json(502, { error: 'The menu could not be read. Try a clearer photo.' });
   }
 
-  return json(200, normalizeMenuScan(parsed));
+  return json(200, await signMenuScan(normalizeMenuScan(parsed), deviceId));
 });
 
 async function runScan(base64Jpeg: string, deadline: number): Promise<ChatCompletion> {

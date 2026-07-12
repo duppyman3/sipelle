@@ -3,10 +3,16 @@
 
 export type Kind = 'scan' | 'image';
 
-/** Per-day request caps, checked against both the device id and the client IP. */
+/**
+ * Per-day request caps, checked against the device id, the client IP, and a global
+ * total. The global tier is a deliberately conservative pre-launch ceiling on total
+ * spend — it binds well before the per-IP caps do, and survives an attacker rotating
+ * device ids or IPs. Raise it as real usage grows.
+ */
 export const DAILY_CAPS = {
   device: { scan: 20, image: 600 },
   ip: { scan: 60, image: 1800 },
+  global: { scan: 300, image: 1200 },
 } as const;
 
 /** Respond before the 150s gateway idle timeout, so total work is capped here. */
@@ -23,3 +29,6 @@ export const MAX_VISUAL_DESCRIPTION_CHARS = 600;
 
 /** Device ids are generated client-side; keep in sync with src/data/device-id.ts. */
 export const DEVICE_ID_PATTERN = /^[a-z0-9-]{8,64}$/;
+
+/** How long a drink signature stays valid, so harvested signatures decay. */
+export const SIGNATURE_TTL_SECONDS = 86_400;

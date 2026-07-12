@@ -9,6 +9,7 @@ import { handleOptions, json } from '../_shared/cors.ts';
 import { requirePublishableKey } from '../_shared/auth.ts';
 import { clientIp, consumeQuota } from '../_shared/rate-limit.ts';
 import { postOpenRouter, UpstreamError } from '../_shared/openrouter.ts';
+import { verifyDrink } from '../_shared/signature.ts';
 
 type ImageResponse = {
   data?: { b64_json?: string; media_type?: string }[];
@@ -27,6 +28,12 @@ Deno.serve(async (req) => {
     return unauthorized;
   }
 
+  // Reject oversized bodies before reading them — this payload is a few hundred bytes of JSON.
+  const contentLength = Number(req.headers.get('content-length') ?? '0');
+  if (contentLength > 10_000) {
+    return json(413, { error: 'Invalid request.' });
+  }
+
   let payload: unknown;
   try {
     payload = await req.json();
@@ -37,7 +44,7 @@ Deno.serve(async (req) => {
     return json(400, { error: 'Invalid request.' });
   }
 
-  const { deviceId, name, visualDescription } = payload as Record<string, unknown>;
+  const { deviceId, name, visualDescription, sig } = payload as Record<string, unknown>;
   if (
     typeof deviceId !== 'string' ||
     !DEVICE_ID_PATTERN.test(deviceId) ||
@@ -45,23 +52,39 @@ Deno.serve(async (req) => {
     name.trim().length === 0 ||
     name.length > MAX_NAME_CHARS ||
     typeof visualDescription !== 'string' ||
-    visualDescription.length > MAX_VISUAL_DESCRIPTION_CHARS
+    visualDescription.length > MAX_VISUAL_DESCRIPTION_CHARS ||
+    typeof sig !== 'string'
   ) {
+    return json(400, { error: 'Invalid request.' });
+  }
+
+  if (!Deno.env.get('OPENROUTER_API_KEY') || !Deno.env.get('DRINK_SIGNING_SECRET')) {
+    return json(500, { error: 'The AI service is not configured yet.' });
+  }
+
+  // Only render drinks scan-menu authored, for the device it authored them for. Checked
+  // before the quota RPC so a forged request can't cost us a database write or eat
+  // someone else's IP quota. We verify the raw echoed strings, which scan-menu already
+  // trimmed and clamped before signing — sign and verify must see identical bytes. The
+  // error stays generic — no reason to tell a caller a signature scheme is what stopped them.
+  if (!(await verifyDrink(name, visualDescription, deviceId, sig))) {
+    return json(401, { error: 'Invalid request.' });
+  }
+
+  // No trustworthy IP means no IP quota, so refuse rather than let the caller past it.
+  const ip = clientIp(req);
+  if (ip === null) {
     return json(400, { error: 'Invalid request.' });
   }
 
   let quota;
   try {
-    quota = await consumeQuota({ deviceId, ip: clientIp(req), kind: 'image' });
+    quota = await consumeQuota({ deviceId, ip, kind: 'image' });
   } catch {
     return json(500, { error: 'Could not check usage limits. Try again shortly.' });
   }
   if (!quota.allowed) {
     return json(429, { error: 'Daily image limit reached. Try again tomorrow.' });
-  }
-
-  if (!Deno.env.get('OPENROUTER_API_KEY')) {
-    return json(500, { error: 'The AI service is not configured yet.' });
   }
 
   const prompt =
@@ -72,9 +95,12 @@ Deno.serve(async (req) => {
   try {
     response = await generateImage(prompt);
   } catch (err) {
+    // Upstream text can name models, providers, and our billing state — log it, don't relay it.
     if (err instanceof UpstreamError) {
-      return json(err.status === 0 ? 504 : 502, { error: err.message });
+      console.error('openrouter upstream failure', { status: err.status, message: err.message });
+      return json(err.status === 0 ? 504 : 502, { error: 'No image was returned.' });
     }
+    console.error('image failure', err);
     return json(502, { error: 'No image was returned.' });
   }
 

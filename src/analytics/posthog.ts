@@ -1,7 +1,6 @@
 import PostHog from 'posthog-react-native';
 
 import { getDeviceId } from '@/data/device-id';
-import { getSavedFirstName } from '@/data/user-name';
 
 // Public-by-design config, inlined by Expo at build time — must stay static
 // dot-notation reads (same rule as src/ai/backend.ts).
@@ -35,8 +34,8 @@ function getClient(): PostHog | null {
   if (__DEV__) {
     client.debug();
   }
-  const firstName = getSavedFirstName();
-  client.identify(getDeviceId(), firstName ? { first_name: firstName } : undefined);
+  // Anonymous device id only — no PII (a first name) leaves the device.
+  client.identify(getDeviceId());
   return client;
 }
 

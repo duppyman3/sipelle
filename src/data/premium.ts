@@ -14,6 +14,12 @@ import '@/data/install-storage';
 //     entitlement active after the call.
 //   - usePremiumPrice(): store-localized priceString from the current
 //     offering's annual package (the constant below is the fallback).
+// The guard below makes that swap a release gate: any non-dev build fails at
+// import rather than silently granting every user premium for $0.
+
+if (!__DEV__) {
+  throw new Error('premium.ts dev stub must be replaced with RevenueCat before release');
+}
 
 const FALLBACK_PRICE = '$2.99/year';
 const STORAGE_KEY = 'sipelle.premium';

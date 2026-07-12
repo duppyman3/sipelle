@@ -15,6 +15,8 @@ export type ScannedDrink = {
   visualDescription: string;
   price: string | null;
   nutrition: DrinkNutrition;
+  /** The backend's HMAC over this drink — drink-image won't render without it. */
+  sig: string;
 };
 
 export type MenuScan = {

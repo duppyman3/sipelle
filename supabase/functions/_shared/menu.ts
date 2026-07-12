@@ -2,6 +2,9 @@
 // in-app scanner (src/ai/menu-scan.ts). Kept server-side so the prompt and schema
 // can't be lifted from the app bundle.
 
+import { MAX_NAME_CHARS, MAX_VISUAL_DESCRIPTION_CHARS, SIGNATURE_TTL_SECONDS } from '../_shared/config.ts';
+import { signDrink } from '../_shared/signature.ts';
+
 // keep in sync with src/data/menu.ts DRINK_CATEGORY_IDS
 const DRINK_CATEGORY_IDS = ['shots', 'beer', 'exotic', 'cocktails', 'wine'] as const;
 type DrinkCategory = (typeof DRINK_CATEGORY_IDS)[number];
@@ -24,6 +27,14 @@ export type ScannedDrink = {
 export type MenuScan = {
   venueName: string | null;
   drinks: ScannedDrink[];
+};
+
+/** A drink carrying our HMAC, which drink-image requires before it will render anything. */
+export type SignedDrink = ScannedDrink & { sig: string };
+
+export type SignedMenuScan = {
+  venueName: string | null;
+  drinks: SignedDrink[];
 };
 
 const PROMPT =
@@ -157,6 +168,22 @@ export function buildScanBody(base64Jpeg: string, includeReasoning: boolean): ob
   return body;
 }
 
+/**
+ * Signs every drink in a normalized scan, so drink-image can tell our text from a
+ * caller's. The signatures are bound to the scanning device and expire, so they can't
+ * be harvested and replayed indefinitely or from a rotated device id.
+ */
+export async function signMenuScan(scan: MenuScan, deviceId: string): Promise<SignedMenuScan> {
+  const exp = Math.floor(Date.now() / 1000) + SIGNATURE_TTL_SECONDS;
+  const drinks = await Promise.all(
+    scan.drinks.map(async (drink) => ({
+      ...drink,
+      sig: await signDrink(drink.name, drink.visualDescription, deviceId, exp),
+    })),
+  );
+  return { venueName: scan.venueName, drinks };
+}
+
 export function normalizeMenuScan(raw: RawMenuScan): MenuScan {
   const venueName =
     typeof raw.venue_name === 'string' && raw.venue_name.trim().length > 0 ? raw.venue_name.trim() : null;
@@ -170,14 +197,20 @@ export function normalizeMenuScan(raw: RawMenuScan): MenuScan {
 }
 
 function normalizeDrink(raw: RawDrink): ScannedDrink | null {
-  const name = typeof raw.name === 'string' ? raw.name.trim() : '';
+  // Clamp to the same caps drink-image enforces: we sign these exact strings, so an
+  // over-long one would be a validly signed drink the image endpoint then rejects.
+  const name = typeof raw.name === 'string' ? raw.name.trim().slice(0, MAX_NAME_CHARS) : '';
   if (name.length === 0) {
     return null;
   }
+  const visualDescription =
+    typeof raw.visual_description === 'string'
+      ? raw.visual_description.trim().slice(0, MAX_VISUAL_DESCRIPTION_CHARS)
+      : '';
   return {
     name,
     category: normalizeCategory(raw.category),
-    visualDescription: typeof raw.visual_description === 'string' ? raw.visual_description.trim() : '',
+    visualDescription,
     price: typeof raw.price === 'string' && raw.price.trim().length > 0 ? raw.price.trim() : null,
     nutrition: normalizeNutrition(raw.nutrition),
   };

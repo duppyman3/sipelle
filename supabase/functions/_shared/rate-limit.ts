@@ -1,24 +1,21 @@
 import { DAILY_CAPS, type Kind } from '../_shared/config.ts';
 
-/** Best-effort client IP: Cloudflare's header first, then the X-Forwarded-For chain. */
-export function clientIp(req: Request): string {
-  const cf = req.headers.get('cf-connecting-ip');
-  if (cf) {
-    return cf;
-  }
-  const forwarded = req.headers.get('x-forwarded-for');
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
-  return 'unknown';
+/**
+ * The client IP, or null when we can't establish one. Only cf-connecting-ip is
+ * trusted: Cloudflare overwrites it on ingress, whereas X-Forwarded-For is
+ * client-supplied and spoofable. Callers must fail closed when this returns null —
+ * bucketing unidentified callers together would hand them a shared free quota.
+ */
+export function clientIp(req: Request): string | null {
+  return req.headers.get('cf-connecting-ip');
 }
 
-type QuotaResult = { allowed: boolean; device_count: number; ip_count: number };
+type QuotaResult = { allowed: boolean; device_count: number; ip_count: number; global_count: number };
 
 /**
- * Atomically increments the per-device and per-IP counters for `kind` and reports
- * whether the request is within today's caps. Calls the consume_ai_quota RPC with
- * the service-role key so it bypasses RLS. Throws on any RPC failure so the caller
+ * Atomically increments the per-device, per-IP, and global counters for `kind` and
+ * reports whether the request is within today's caps. Calls the consume_ai_quota RPC
+ * with the service-role key so it bypasses RLS. Throws on any RPC failure so the caller
  * fails closed (returns 500) rather than letting usage go uncounted.
  */
 export async function consumeQuota(args: { deviceId: string; ip: string; kind: Kind }): Promise<QuotaResult> {
@@ -46,6 +43,7 @@ export async function consumeQuota(args: { deviceId: string; ip: string; kind: K
       p_kind: kind,
       p_device_limit: DAILY_CAPS.device[kind],
       p_ip_limit: DAILY_CAPS.ip[kind],
+      p_global_limit: DAILY_CAPS.global[kind],
     }),
   });
   if (!res.ok) {

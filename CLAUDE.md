@@ -2,7 +2,7 @@
 
 ## Project Purpose
 A React Native phone app: photograph a restaurant alcoholic drink menu, then see AI-generated photos of every drink.
-Website: https://www.sipelle.app/
+Website: https://www.sipelle.app/ — companion marketing/support site, separate repo (see Website section).
 
 ## Design System
 
@@ -35,6 +35,13 @@ In app code, the tokens are already ported to `src/constants/theme.ts` (colors, 
 - **Access for agents**: use the Supabase MCP tools (`mcp__supabase__*`) with that project id for all SQL, migrations, and edge functions — no connection string needed. The same org holds unrelated projects (MenuGallery, CurlFreely, FFLTransferFees); never target those from this repo.
 - **Access for the app**: the app hits the Edge Functions with **plain `fetch`** and the publishable (anon) key in the `apikey` header — **not** `@supabase/supabase-js`, and it consumes no tables directly yet. Any future table access uses that publishable key with Row Level Security on every table; the direct Postgres connection string (`postgres` role) bypasses RLS and must never appear in the repo, the Expo bundle, or client code.
 - **Secrets**: `.gitignore` only covers `.env*.local` — a plain `.env` WOULD be committed, so keep local secrets in `.env.local`, and **never create `supabase/functions/.env` or `supabase/.env`** (they would be committed too).
+
+## Website (www.sipelle.app)
+
+- Companion marketing/support site for the app. **Source is NOT in this repo** — it lives at `D:\GITHUB\sipelle_website` (GitHub `duppyman3/sipelle_website`; flat HTML/CSS on Cloudflare, own CLAUDE.md). Make website changes there, never here.
+- **This repo is the design upstream**: the website's `design-system/` is a byte-identical copy of `design/design_handoff_sipelle_app` (plus a web-only `WEB-NOTES.md`). After changing the design handoff here, re-copy it into the website repo — the copies must not drift.
+- Live pages: `/` (landing), `/privacy` (privacy policy), `/terms` (terms of service), `/support` (contact info@sipelle.app) — extensionless URLs are canonical (`.html` forms 307-redirect to them). `src/app/paywall.tsx` links to `https://www.sipelle.app/terms` and `/privacy`. The terms copy is a placeholder draft (effective date, legal entity, governing law, mailing address all TBD) — finalize before store submission.
+- The Edge Functions send `HTTP-Referer: https://www.sipelle.app` on OpenRouter calls (`supabase/functions/_shared/openrouter.ts`).
 
 
 

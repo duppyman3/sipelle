@@ -22,6 +22,7 @@ export type SessionDrink = {
   visualDescription: string;
   price: string | null;
   nutrition: DrinkNutrition;
+  sig: string;
   imageStatus: DrinkImageStatus;
   imageUri: string | null;
 };
