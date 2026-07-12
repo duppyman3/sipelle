@@ -1,4 +1,5 @@
 import { OpenRouterError, postOpenRouter } from '@/ai/openrouter';
+import { DRINK_CATEGORY_IDS, type DrinkCategory } from '@/data/menu';
 
 export type DrinkNutrition = {
   calories: number | null;
@@ -9,6 +10,7 @@ export type DrinkNutrition = {
 
 export type ScannedDrink = {
   name: string;
+  category: DrinkCategory;
   visualDescription: string;
   price: string | null;
   nutrition: DrinkNutrition;
@@ -23,7 +25,10 @@ const PROMPT =
   'Read this photo of a restaurant drink menu. Extract up to 30 alcoholic drinks, ' +
   'skipping food and plain soft drinks unless the menu is entirely mocktails. Use the ' +
   'exact printed name for each drink. Estimate nutrition per standard serving. Set ' +
-  'venue_name only if it is visible on the menu, otherwise null.';
+  'venue_name only if it is visible on the menu, otherwise null. Sort every drink into ' +
+  'exactly one category of shots, beer, exotic, cocktails, or wine — pick the closest ' +
+  'fit, and use exotic for anything unusual or hard to place (cider, sake, hard seltzer, ' +
+  'port, mead).';
 
 // Strict JSON schema: every object lists all properties in `required`, forbids extra
 // properties, and expresses nullables as type arrays. Descriptions steer the model.
@@ -43,6 +48,12 @@ const MENU_SCHEMA = {
           name: {
             type: 'string',
             description: 'The exact printed drink name.',
+          },
+          category: {
+            type: 'string',
+            enum: [...DRINK_CATEGORY_IDS],
+            description:
+              'The single closest-fit category. Use "exotic" for anything unusual or that fits nowhere else — cider, sake, hard seltzer, port, mead, punches.',
           },
           visual_description: {
             type: 'string',
@@ -77,7 +88,7 @@ const MENU_SCHEMA = {
             additionalProperties: false,
           },
         },
-        required: ['name', 'visual_description', 'price', 'nutrition'],
+        required: ['name', 'category', 'visual_description', 'price', 'nutrition'],
         additionalProperties: false,
       },
     },
@@ -99,6 +110,7 @@ type RawNutrition = {
 
 type RawDrink = {
   name?: string | null;
+  category?: string | null;
   visual_description?: string | null;
   price?: string | null;
   nutrition?: RawNutrition | null;
@@ -189,10 +201,16 @@ function normalizeDrink(raw: RawDrink): ScannedDrink | null {
   }
   return {
     name,
+    category: normalizeCategory(raw.category),
     visualDescription: typeof raw.visual_description === 'string' ? raw.visual_description.trim() : '',
     price: typeof raw.price === 'string' && raw.price.trim().length > 0 ? raw.price.trim() : null,
     nutrition: normalizeNutrition(raw.nutrition),
   };
+}
+
+function normalizeCategory(value: string | null | undefined): DrinkCategory {
+  const id = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  return (DRINK_CATEGORY_IDS as readonly string[]).includes(id) ? (id as DrinkCategory) : 'exotic';
 }
 
 function normalizeNutrition(raw: RawNutrition | null | undefined): DrinkNutrition {

@@ -12,7 +12,7 @@ export function CategoryChip({ category }: { category: Category }) {
     <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`${category.label} drinks`}
-      onPress={() => router.push('/results')}
+      onPress={() => router.push({ pathname: '/results', params: { category: category.id } })}
       style={{ width: 96, alignItems: 'center', gap: 8 }}>
       <View
         style={{

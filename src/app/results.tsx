@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
-import { useEffect } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ArrowLeft, Camera } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { ScrollView, Text, View, type TextStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,8 +11,9 @@ import { ResultsWash } from '@/components/results-wash';
 import { ScannedDrinkCard } from '@/components/scanned-drink-card';
 import { enterSoft, softEasing } from '@/constants/motion';
 import { colors, fonts, layout, shadows } from '@/constants/theme';
+import { CATEGORIES, DRINK_CATEGORY_IDS, type DrinkCategory } from '@/data/menu';
 import { scanMenu } from '@/data/scan-menu';
-import { retryScan, useScanSession, type SessionDrink } from '@/data/scan-session';
+import { retryScan, useScanSession, type ScanActivity, type ScanSession } from '@/data/scan-session';
 
 // Slow breath for the scanning motif; module scope so React Compiler never
 // rebuilds it per render.
@@ -33,19 +34,43 @@ const HEADLINE_TEXT: TextStyle = {
 // first two words keep the dots hugging 'menu' like the line they replaced.
 const HEADLINE_SEGMENTS = ['Reading ', 'your ', 'menu', '.', '.', '.'];
 
+type FilterId = 'all' | DrinkCategory;
+
+const FILTERS: { id: FilterId; label: string }[] = [
+  { id: 'all', label: 'All' },
+  ...CATEGORIES.map((category) => ({ id: category.id, label: category.label })),
+];
+
+// The footer's compact wave — same stagger as the full-screen headline.
+const FOOTER_SEGMENTS = ['Reading ', 'the ', 'next ', 'page', '.', '.', '.'];
+const FOOTER_TEXT: TextStyle = { fontFamily: fonts.hand, fontSize: 22, lineHeight: 26, color: colors.ink };
+
+function toFilterId(value: string | string[] | undefined): FilterId {
+  return typeof value === 'string' && (DRINK_CATEGORY_IDS as readonly string[]).includes(value)
+    ? (value as DrinkCategory)
+    : 'all';
+}
+
 export default function Results() {
   const session = useScanSession();
+  const params = useLocalSearchParams<{ category?: string }>();
+  // Honor the chip's category param only if there were drinks when this screen
+  // opened — a chip tapped on an empty session must not filter whatever the
+  // user scans next from the blank canvas.
+  const [initialFilter] = useState<FilterId>(() =>
+    session.drinks.length > 0 ? toFilterId(params.category) : 'all'
+  );
 
-  switch (session.status) {
-    case 'scanning':
+  if (session.drinks.length === 0) {
+    if (session.activity.status === 'scanning') {
       return <ScanningState />;
-    case 'error':
-      return <ErrorState message={session.message} />;
-    case 'ready':
-      return <ReadyResults venueName={session.venueName} drinks={session.drinks} />;
-    default:
-      return <EmptyState />;
+    }
+    if (session.activity.status === 'error') {
+      return <ErrorState message={session.activity.message} />;
+    }
+    return <EmptyState />;
   }
+  return <ReadyResults session={session} initialFilter={initialFilter} />;
 }
 
 // No scan yet: a still pigment pool and an invitation to point the camera.
@@ -116,8 +141,10 @@ function EmptyState() {
 
 // A finished scan: the same scrolling layout, with the venue header and cards
 // whose photos fill in as they arrive.
-function ReadyResults({ venueName, drinks }: { venueName: string | null; drinks: SessionDrink[] }) {
+function ReadyResults({ session, initialFilter }: { session: ScanSession; initialFilter: FilterId }) {
   const insets = useSafeAreaInsets();
+  const [filter, setFilter] = useState(initialFilter);
+  const drinks = filter === 'all' ? session.drinks : session.drinks.filter((drink) => drink.category === filter);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.washCream }}>
@@ -140,16 +167,165 @@ function ReadyResults({ venueName, drinks }: { venueName: string | null; drinks:
               marginTop: -8,
               color: colors.ink,
             }}>
-            {venueName ?? 'Your Menu'}
+            {session.venueName ?? 'Your Menu'}
           </Text>
-          <View style={{ gap: 20, marginTop: 24 }}>
-            {drinks.map((drink) => (
-              <ScannedDrinkCard key={drink.id} drink={drink} />
-            ))}
-          </View>
+          <FilterRow filter={filter} onChange={setFilter} />
+          {drinks.length > 0 ? (
+            <View style={{ gap: 20, marginTop: 24 }}>
+              {drinks.map((drink) => (
+                <ScannedDrinkCard key={drink.id} drink={drink} />
+              ))}
+            </View>
+          ) : (
+            <FilteredEmpty filter={filter} />
+          )}
+          <ListFooter activity={session.activity} />
         </Animated.View>
       </ScrollView>
     </View>
+  );
+}
+
+// The category rail: a horizontal row of pills, the active one inverted to ink.
+function FilterRow({ filter, onChange }: { filter: FilterId; onChange: (id: FilterId) => void }) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={{ marginTop: 20, marginHorizontal: -layout.gutter, flexGrow: 0 }}
+      contentContainerStyle={{ paddingHorizontal: layout.gutter, gap: 8 }}>
+      {FILTERS.map((item) => {
+        const active = item.id === filter;
+        return (
+          <PressableScale
+            key={item.id}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={`Show ${item.label.toLowerCase()}`}
+            onPress={() => onChange(item.id)}
+            style={{
+              backgroundColor: active ? colors.ink : colors.pill,
+              borderRadius: 999,
+              borderCurve: 'continuous',
+              paddingVertical: 6,
+              paddingHorizontal: 16,
+              boxShadow: shadows.pill,
+            }}>
+            <Text style={{ fontFamily: fonts.hand, fontSize: 19, lineHeight: 21, color: active ? colors.tile : colors.ink }}>
+              {item.label}
+            </Text>
+          </PressableScale>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+// A chosen filter with nothing under it yet — the menu hasn't surfaced any.
+function FilteredEmpty({ filter }: { filter: FilterId }) {
+  const label = CATEGORIES.find((category) => category.id === filter)?.label.toLowerCase() ?? 'drinks';
+  return (
+    <View style={{ alignItems: 'center', marginTop: 48 }}>
+      <Text
+        style={{
+          fontFamily: fonts.hand,
+          fontSize: 26,
+          lineHeight: 30,
+          color: colors.ink,
+          alignSelf: 'stretch',
+          textAlign: 'center',
+        }}>
+        Nothing here yet
+      </Text>
+      <Text style={{ fontSize: 15, lineHeight: 21, color: colors.body, marginTop: 6, textAlign: 'center', maxWidth: 280 }}>
+        No {label} on this menu so far.
+      </Text>
+    </View>
+  );
+}
+
+// Below the cards, the session's live edge: a scan in progress, a soft inline
+// failure, or the invitation to add the next page.
+function ListFooter({ activity }: { activity: ScanActivity }) {
+  if (activity.status === 'scanning') {
+    return (
+      <View
+        accessible
+        accessibilityLabel="Reading the next page…"
+        style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 28 }}>
+        {FOOTER_SEGMENTS.map((segment, index) => (
+          <BlinkSegment key={index} text={segment} delay={index * DOT_STAGGER_MS} textStyle={FOOTER_TEXT} />
+        ))}
+      </View>
+    );
+  }
+
+  if (activity.status === 'error') {
+    return (
+      <View style={{ alignItems: 'center', marginTop: 28 }}>
+        <Text
+          style={{
+            fontFamily: fonts.hand,
+            fontSize: 22,
+            lineHeight: 26,
+            color: colors.ink,
+            alignSelf: 'stretch',
+            textAlign: 'center',
+          }}>
+          The ink smudged
+        </Text>
+        <Text
+          style={{
+            fontSize: 14,
+            lineHeight: 20,
+            color: colors.body,
+            marginTop: 4,
+            textAlign: 'center',
+            maxWidth: 280,
+          }}>
+          {activity.message}
+        </Text>
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel="Try again"
+          onPress={() => retryScan()}
+          style={{
+            marginTop: 14,
+            backgroundColor: colors.ink,
+            borderRadius: 999,
+            paddingVertical: 10,
+            paddingHorizontal: 26,
+            boxShadow: shadows.pill,
+          }}>
+          <Text style={{ color: colors.tile, fontSize: 15, fontWeight: '600' }}>Try again</Text>
+        </PressableScale>
+      </View>
+    );
+  }
+
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel="Scan another page"
+      onPress={scanMenu}
+      style={{
+        marginTop: 28,
+        alignSelf: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: colors.pill,
+        borderRadius: 999,
+        borderCurve: 'continuous',
+        paddingVertical: 11,
+        paddingHorizontal: 24,
+        boxShadow: shadows.pill,
+      }}>
+      <Camera size={17} color={colors.ink} strokeWidth={2} />
+      <Text style={{ fontFamily: fonts.hand, fontSize: 20, lineHeight: 24, color: colors.ink }}>
+        Scan another page
+      </Text>
+    </PressableScale>
   );
 }
 
@@ -209,13 +385,13 @@ function ScanningState() {
 
 // Each word and dot of the scanning headline blinks on the same staggered
 // timing, so a single wave of ink travels across the whole line.
-function BlinkSegment({ text, delay }: { text: string; delay: number }) {
+function BlinkSegment({ text, delay, textStyle = HEADLINE_TEXT }: { text: string; delay: number; textStyle?: TextStyle }) {
   const v = useSharedValue(0);
   useEffect(() => {
     v.set(withDelay(delay, withRepeat(withTiming(1, DOT_TIMING), -1, true)));
   }, [v, delay]);
   const style = useAnimatedStyle(() => ({ opacity: 0.25 + v.get() * 0.75 }));
-  return <Animated.Text style={[HEADLINE_TEXT, style]}>{text}</Animated.Text>;
+  return <Animated.Text style={[textStyle, style]}>{text}</Animated.Text>;
 }
 
 // The scan failed: a soft apology and a single retry.

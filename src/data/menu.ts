@@ -2,10 +2,15 @@
 
 import type { CategoryArtKind } from '@/components/category-art';
 
+// The five chip ids double as the scanner's forced-choice categories — every
+// scanned drink is sorted into exactly one of these buckets.
+export const DRINK_CATEGORY_IDS = ['shots', 'beer', 'exotic', 'cocktails', 'wine'] as const;
+export type DrinkCategory = (typeof DRINK_CATEGORY_IDS)[number];
+
 // Chip artwork is either a raster crop from the design handoff (`image`) or
 // a palette-matched vector drawing (`art`) for categories the handoff never
 // illustrated.
-export type Category = { id: string; label: string } & (
+export type Category = { id: DrinkCategory; label: string } & (
   | { image: number }
   | { art: CategoryArtKind }
 );
