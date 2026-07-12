@@ -92,6 +92,8 @@ Claude may modify existing .prd files without needing permission.
 
 ## Always Do First
 
+- **Plan Mode** Always start in plan mode.
+
 - **Invoke the `frontend-design` skill** before writing any frontend code, every session, no exceptions. Design source of truth: the "MenuGallery" Claude Design system project (see Design Workflow above) and the color tokens in `src/constants.ts`.
 
 - **agent teams** always invoke agent teams to do the work, you should use 3 team mates minimum, never do the work in the main context window. The main context window should only manage teams and agents.

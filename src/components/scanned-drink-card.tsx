@@ -14,8 +14,8 @@ import { retryDrinkImage, type SessionDrink } from '@/data/scan-session';
 // image, never an alarming red.
 const ROSE_WASH = '#F1D3D8';
 
-// Slow breath shared by every generating tile; module scope so React Compiler
-// never rebuilds it per render.
+// Slow breath for every tile still waiting on its photo; module scope so React
+// Compiler never rebuilds it per render.
 const PULSE_TIMING = { duration: 1500, easing: softEasing };
 
 // The image tile echoes drink-card.tsx exactly (104×109, radius 26) so scanned
@@ -117,24 +117,26 @@ function DrinkTile({ drink }: { drink: SessionDrink }) {
     );
   }
 
-  // queued | generating — a soft pigment pool that breathes while generating.
+  // queued | generating — a soft pigment pool that pulses until the photo lands.
   return (
-    <View style={[TILE_BASE, { backgroundColor: colors.pill }]}>
-      <TilePlaceholder animate={drink.imageStatus === 'generating'} />
+    <View
+      accessible
+      accessibilityLabel="Generating drink image"
+      style={[TILE_BASE, { backgroundColor: colors.pill }]}>
+      <TilePlaceholder />
     </View>
   );
 }
 
-function TilePlaceholder({ animate }: { animate: boolean }) {
+function TilePlaceholder() {
   const pulse = useSharedValue(0);
   useEffect(() => {
-    if (animate) {
-      pulse.set(withRepeat(withTiming(1, PULSE_TIMING), -1, true));
-    } else {
-      pulse.set(0);
-    }
-  }, [animate, pulse]);
-  const pulseStyle = useAnimatedStyle(() => ({ opacity: 0.6 + pulse.get() * 0.4 }));
+    pulse.set(withRepeat(withTiming(1, PULSE_TIMING), -1, true));
+  }, [pulse]);
+  const pulseStyle = useAnimatedStyle(() => ({
+    opacity: 0.35 + pulse.get() * 0.65,
+    transform: [{ scale: 0.9 + pulse.get() * 0.12 }],
+  }));
 
   return (
     <Animated.View style={pulseStyle}>

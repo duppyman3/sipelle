@@ -22,9 +22,9 @@ export type Drink = {
 
 export const CATEGORIES: Category[] = [
   {
-    id: 'citrus',
-    label: 'Citrus',
-    image: require('@/assets/images/sipelle/category-citrus.png'),
+    id: 'shots',
+    label: 'Shots',
+    art: 'shots',
   },
   {
     id: 'beer',
