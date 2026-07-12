@@ -11,6 +11,7 @@ import { PressableScale } from '@/components/pressable-scale';
 import { enterSoft } from '@/constants/motion';
 import { colors, fonts, homeGradient, layout, shadows } from '@/constants/theme';
 import { CATEGORIES } from '@/data/menu';
+import { clearPremiumForTesting } from '@/data/premium';
 import { scanMenu } from '@/data/scan-menu';
 import { clearFirstName, getSavedFirstName } from '@/data/user-name';
 
@@ -93,12 +94,13 @@ export default function Home() {
         </Animated.View>
       </ScrollView>
       <HomeTabBar />
-      {/* Testing-only: clears the saved name and restarts the first-run flow. */}
+      {/* Testing-only: clears the saved name and premium, then restarts the first-run flow. */}
       <PressableScale
         accessibilityRole="button"
         accessibilityLabel="Reset saved name"
         onPress={() => {
           clearFirstName();
+          clearPremiumForTesting();
           router.replace('/');
         }}
         style={{

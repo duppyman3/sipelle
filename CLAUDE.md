@@ -24,16 +24,17 @@ In app code, the tokens are already ported to `src/constants/theme.ts` (colors, 
 - **UI**: expo-image for images, expo-linear-gradient (Home wash), CSS `boxShadow` string style prop (never legacy shadow*/elevation), `borderCurve: 'continuous'` on rounded rects, react-native-safe-area-context for insets (Android is always edge-to-edge), inline styles.
 - **Fonts**: @expo-google-fonts/playfair-display + @expo-google-fonts/caveat (600 weights) via `useFonts`, gating expo-splash-screen in the root layout. Body text is the system font.
 - **Icons/art**: lucide-react-native (1.x for React 19) over react-native-svg 15.15.4; custom vector chip art in `src/components/category-art.tsx`.
-- **Persistence**: expo-sqlite's synchronous **localStorage polyfill** (never AsyncStorage), wrapped in `src/data/user-name.ts`. The polyfill import is platform-split (`src/data/install-storage.ts` / empty `.web.ts`) — a direct import breaks the dev web bundle on unresolvable wasm. Guard all access with `typeof localStorage === 'undefined'` (static export renders in Node).
-- **Data**: static venue/menu data in `src/data/menu.ts` (placeholder for the future scan flow).
+- **Persistence**: expo-sqlite's synchronous **localStorage polyfill** (never AsyncStorage), wrapped in `src/data/user-name.ts` and `src/data/device-id.ts`. The polyfill import is platform-split (`src/data/install-storage.ts` / empty `.web.ts`) — a direct import breaks the dev web bundle on unresolvable wasm. Guard all access with `typeof localStorage === 'undefined'` (static export renders in Node).
+- **Data**: static venue/menu data in `src/data/menu.ts`. AI menu-scan and drink-image calls go through `src/ai/backend.ts` → the Supabase Edge Functions (see Backend below).
 - **Checks** (no test framework yet): `npx tsc --noEmit`, `npx expo lint` (eslint-config-expo), bundle smoke tests via `npx expo export --platform android` and `--platform web`.
 
 ## Backend (Supabase)
 
-- **Project**: dedicated Supabase project **Sipelle** — ref `cmoaqgkzotvuvkqeyhhq`, URL https://cmoaqgkzotvuvkqeyhhq.supabase.co (Postgres 17, us-east-1, created 2026-07-12). Intended home for the server-side scan flow; schema starts empty.
+- **Project**: dedicated Supabase project **Sipelle** — ref `cmoaqgkzotvuvkqeyhhq`, URL https://cmoaqgkzotvuvkqeyhhq.supabase.co (Postgres 17, us-east-1, created 2026-07-12).
+- **Server-side AI flow**: the OpenRouter scan/image calls run in two Edge Functions — `scan-menu` and `drink-image` (source of truth in `supabase/functions/`, deployed via the MCP tools). They deploy with **`verify_jwt: false`** plus an in-code check that the request `apikey` matches a project publishable key — **every redeploy must re-pass `verify_jwt: false`** (the MCP tool defaults it back to `true`, which 401s the app). Per-device and per-IP daily caps are enforced by the `rate_limits` table + `consume_ai_quota()` RPC (service-role only; RLS on with no policies). `OPENROUTER_API_KEY` lives ONLY as a function secret (Supabase dashboard-managed — there is no MCP tool for secrets, so it never enters the repo or bundle).
 - **Access for agents**: use the Supabase MCP tools (`mcp__supabase__*`) with that project id for all SQL, migrations, and edge functions — no connection string needed. The same org holds unrelated projects (MenuGallery, CurlFreely, FFLTransferFees); never target those from this repo.
-- **Access for the app**: only ever the project URL + publishable (anon) key via `@supabase/supabase-js`, with Row Level Security on every table. The direct Postgres connection string (`postgres` role) bypasses RLS and must never appear in the repo, the Expo bundle, or client code.
-- **Secrets**: `.gitignore` only covers `.env*.local` — a plain `.env` WOULD be committed. Keep local secrets in `.env.local`.
+- **Access for the app**: the app hits the Edge Functions with **plain `fetch`** and the publishable (anon) key in the `apikey` header — **not** `@supabase/supabase-js`, and it consumes no tables directly yet. Any future table access uses that publishable key with Row Level Security on every table; the direct Postgres connection string (`postgres` role) bypasses RLS and must never appear in the repo, the Expo bundle, or client code.
+- **Secrets**: `.gitignore` only covers `.env*.local` — a plain `.env` WOULD be committed, so keep local secrets in `.env.local`, and **never create `supabase/functions/.env` or `supabase/.env`** (they would be committed too).
 
 
 

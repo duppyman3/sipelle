@@ -1,13 +1,17 @@
 import { Image } from 'expo-image';
-import { RotateCcw } from 'lucide-react-native';
+import { router } from 'expo-router';
+import { Lock, RotateCcw } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { Text, View, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { Ellipse } from 'react-native-svg';
 
+import { type DrinkNutrition } from '@/ai/menu-scan';
 import { PressableScale } from '@/components/pressable-scale';
 import { softEasing } from '@/constants/motion';
 import { colors, fonts, shadows } from '@/constants/theme';
+import { useShowNutrition } from '@/data/nutrition-pref';
+import { useIsPremium } from '@/data/premium';
 import { retryDrinkImage, type SessionDrink } from '@/data/scan-session';
 
 // Rose pigment softened toward the card — a gentle "smudge" wash for a failed
@@ -32,16 +36,6 @@ const TILE_BASE: ViewStyle = {
 };
 
 export function ScannedDrinkCard({ drink }: { drink: SessionDrink }) {
-  const { calories, abvPercent } = drink.nutrition;
-  const nutritionParts: string[] = [];
-  if (calories != null) {
-    nutritionParts.push(`≈ ${Math.round(calories)} cal`);
-  }
-  if (abvPercent != null) {
-    nutritionParts.push(`${Math.round(abvPercent)}% ABV`);
-  }
-  const nutrition = nutritionParts.join(' · ');
-
   return (
     <View
       style={{
@@ -81,13 +75,68 @@ export function ScannedDrinkCard({ drink }: { drink: SessionDrink }) {
             </View>
           ) : null}
         </View>
-        {nutrition ? <Text style={{ fontSize: 13, color: colors.muted }}>{nutrition}</Text> : null}
+        <NutritionLine nutrition={drink.nutrition} />
         <Text numberOfLines={3} style={{ fontSize: 14, lineHeight: 19, color: colors.body }}>
           {drink.visualDescription}
         </Text>
       </View>
     </View>
   );
+}
+
+function NutritionLine({ nutrition }: { nutrition: DrinkNutrition }) {
+  const isPremium = useIsPremium();
+  const showNutrition = useShowNutrition();
+
+  const { calories, abvPercent, sugarGrams, carbsGrams } = nutrition;
+  const hasPremiumData = calories != null || sugarGrams != null || carbsGrams != null;
+
+  // Only tease the paywall when there's locked premium data to reveal — a drink
+  // with just ABV shows it plainly rather than baiting an upgrade.
+  if (!isPremium && hasPremiumData) {
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel="Unlock nutrition"
+          hitSlop={8}
+          onPress={() => router.push('/paywall')}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Lock size={12} color={colors.muted} strokeWidth={2} />
+          <Text style={{ fontSize: 13, color: colors.muted }}>≈ ··· cal</Text>
+        </PressableScale>
+        {abvPercent != null ? (
+          <Text style={{ fontSize: 13, color: colors.muted }}>· {Math.round(abvPercent)}% ABV</Text>
+        ) : null}
+      </View>
+    );
+  }
+
+  if (isPremium && showNutrition) {
+    const parts: string[] = [];
+    if (calories != null) {
+      parts.push(`≈ ${Math.round(calories)} cal`);
+    }
+    if (sugarGrams != null) {
+      parts.push(`${Math.round(sugarGrams)}g sugar`);
+    }
+    if (carbsGrams != null) {
+      parts.push(`${Math.round(carbsGrams)}g carbs`);
+    }
+    if (abvPercent != null) {
+      parts.push(`${Math.round(abvPercent)}% ABV`);
+    }
+    if (parts.length === 0) {
+      return null;
+    }
+    return <Text style={{ fontSize: 13, lineHeight: 18, color: colors.muted }}>{parts.join(' · ')}</Text>;
+  }
+
+  if (abvPercent != null) {
+    return <Text style={{ fontSize: 13, color: colors.muted }}>{Math.round(abvPercent)}% ABV</Text>;
+  }
+
+  return null;
 }
 
 function DrinkTile({ drink }: { drink: SessionDrink }) {

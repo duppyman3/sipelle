@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 
 import { generateDrinkImage } from '@/ai/drink-image';
 import { scanMenuPhoto, type DrinkNutrition, type MenuScan } from '@/ai/menu-scan';
-import { hasOpenRouterKey } from '@/ai/openrouter';
+import { hasAiBackend } from '@/ai/backend';
 import type { DrinkCategory } from '@/data/menu';
 
 // In-memory store for the current app session. Drinks and the venue name
@@ -122,12 +122,12 @@ async function run(): Promise<void> {
   if (base64 === null) {
     return;
   }
-  if (!hasOpenRouterKey()) {
+  if (!hasAiBackend()) {
     setSession({
       ...session,
       activity: {
         status: 'error',
-        message: 'Add your OpenRouter API key to .env.local, then restart the dev server.',
+        message: 'Add the Supabase URL and publishable key to .env.local, then restart the dev server.',
       },
     });
     return;

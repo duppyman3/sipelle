@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Camera } from 'lucide-react-native';
+import { ArrowLeft, Camera, Flame, Lock } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ScrollView, Text, View, type TextStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withRepeat, withTiming } from 'react-native-reanimated';
@@ -12,6 +12,8 @@ import { ScannedDrinkCard } from '@/components/scanned-drink-card';
 import { enterSoft, softEasing } from '@/constants/motion';
 import { colors, fonts, layout, shadows } from '@/constants/theme';
 import { CATEGORIES, DRINK_CATEGORY_IDS, type DrinkCategory } from '@/data/menu';
+import { setShowNutrition, useShowNutrition } from '@/data/nutrition-pref';
+import { useIsPremium } from '@/data/premium';
 import { scanMenu } from '@/data/scan-menu';
 import { retryScan, useScanSession, type ScanActivity, type ScanSession } from '@/data/scan-session';
 
@@ -170,6 +172,7 @@ function ReadyResults({ session, initialFilter }: { session: ScanSession; initia
             {session.venueName ?? 'Your Menu'}
           </Text>
           <FilterRow filter={filter} onChange={setFilter} />
+          <NutritionPill />
           {drinks.length > 0 ? (
             <View style={{ gap: 20, marginTop: 24 }}>
               {drinks.map((drink) => (
@@ -218,6 +221,44 @@ function FilterRow({ filter, onChange }: { filter: FilterId; onChange: (id: Filt
         );
       })}
     </ScrollView>
+  );
+}
+
+// The premium rail: one pill below the filters — a lock that opens the paywall,
+// then, once bought, an inverted-ink toggle for the card nutrition lines.
+function NutritionPill() {
+  const premium = useIsPremium();
+  const showNutrition = useShowNutrition();
+  const showing = premium && showNutrition;
+  const label = !premium ? 'Unlock nutrition' : showing ? 'Hide nutrition' : 'Show nutrition';
+
+  return (
+    <View style={{ flexDirection: 'row', marginTop: 12 }}>
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityState={{ selected: showing }}
+        accessibilityLabel={label}
+        onPress={() => (premium ? setShowNutrition(!showNutrition) : router.push('/paywall'))}
+        style={{
+          backgroundColor: showing ? colors.ink : colors.pill,
+          borderRadius: 999,
+          borderCurve: 'continuous',
+          paddingVertical: 6,
+          paddingHorizontal: 16,
+          boxShadow: shadows.pill,
+        }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {premium ? (
+            <Flame size={14} color={showing ? colors.tile : colors.ink} strokeWidth={2} />
+          ) : (
+            <Lock size={14} color={colors.ink} strokeWidth={2} />
+          )}
+          <Text style={{ fontFamily: fonts.hand, fontSize: 19, lineHeight: 21, color: showing ? colors.tile : colors.ink }}>
+            Nutrition
+          </Text>
+        </View>
+      </PressableScale>
+    </View>
   );
 }
 

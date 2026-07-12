@@ -39,6 +39,7 @@ export default function RootLayout() {
         <Stack.Screen name="welcome" options={{ contentStyle: { backgroundColor: colors.washMint } }} />
         <Stack.Screen name="home" options={{ contentStyle: { backgroundColor: colors.tile } }} />
         <Stack.Screen name="results" options={{ contentStyle: { backgroundColor: colors.washCream } }} />
+        <Stack.Screen name="paywall" options={{ contentStyle: { backgroundColor: colors.washCream } }} />
       </Stack>
     </ThemeProvider>
   );

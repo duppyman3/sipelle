@@ -1,26 +1,20 @@
-// Minimal OpenRouter client for the Sipelle proof of concept. The API key is
-// inlined into the client bundle by Expo — this must stay a static dot-notation
-// read of process.env so the value is substituted at build time.
-const API_KEY = process.env.EXPO_PUBLIC_OPENROUTER_API_KEY;
+// Server-side OpenRouter client. Ported from the former in-app client
+// (src/ai/openrouter.ts) — same transport, headers, and error handling — with the
+// key now read from a function secret instead of the app bundle.
 const BASE_URL = 'https://openrouter.ai/api/v1';
 
 /** An OpenRouter failure. `status` is the HTTP status, or 0 for a network/timeout/parse error. */
-export class OpenRouterError extends Error {
+export class UpstreamError extends Error {
   readonly status: number;
 
   constructor(message: string, status: number) {
     super(message);
-    this.name = 'OpenRouterError';
+    this.name = 'UpstreamError';
     this.status = status;
   }
 }
 
-/** True when a non-empty OpenRouter API key is bundled into the app. */
-export function hasOpenRouterKey(): boolean {
-  return typeof API_KEY === 'string' && API_KEY.trim().length > 0;
-}
-
-/** POSTs a JSON body to an OpenRouter endpoint and returns the parsed response, throwing OpenRouterError on failure. */
+/** POSTs a JSON body to an OpenRouter endpoint and returns the parsed response, throwing UpstreamError on failure. */
 export async function postOpenRouter<T>(
   path: '/chat/completions' | '/images',
   body: object,
@@ -34,7 +28,7 @@ export async function postOpenRouter<T>(
     res = await fetch(`${BASE_URL}${path}`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${API_KEY ?? ''}`,
+        Authorization: `Bearer ${Deno.env.get('OPENROUTER_API_KEY') ?? ''}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://www.sipelle.app',
         'X-OpenRouter-Title': 'Sipelle',
@@ -44,15 +38,15 @@ export async function postOpenRouter<T>(
     });
   } catch {
     if (controller.signal.aborted) {
-      throw new OpenRouterError('The request timed out. Check your connection and try again.', 0);
+      throw new UpstreamError('The request timed out. Check your connection and try again.', 0);
     }
-    throw new OpenRouterError('Network error. Check your connection and try again.', 0);
+    throw new UpstreamError('Network error. Check your connection and try again.', 0);
   } finally {
     clearTimeout(timeout);
   }
 
   if (!res.ok) {
-    throw new OpenRouterError(await readErrorMessage(res), res.status);
+    throw new UpstreamError(await readErrorMessage(res), res.status);
   }
 
   return res.json() as Promise<T>;
