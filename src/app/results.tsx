@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import { ScrollView, Text, View, type TextStyle } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Ellipse } from 'react-native-svg';
 
@@ -19,6 +19,21 @@ import { retryScan, useScanSession, type SessionDrink } from '@/data/scan-sessio
 // Slow breath for the scanning motif; module scope so React Compiler never
 // rebuilds it per render.
 const PULSE_TIMING = { duration: 1500, easing: softEasing };
+const DOT_TIMING = { duration: 780, easing: softEasing };
+const DOT_STAGGER_MS = 260;
+
+// Shared glyph style for every segment of the scanning headline, so the row
+// reads as the single line of text it replaced.
+const HEADLINE_TEXT: TextStyle = {
+  fontFamily: fonts.hand,
+  fontSize: 32,
+  lineHeight: 36,
+  color: colors.ink,
+};
+
+// One continuous blink wave across the headline; the trailing spaces after the
+// first two words keep the dots hugging 'menu' like the line they replaced.
+const HEADLINE_SEGMENTS = ['Reading ', 'your ', 'menu', '.', '.', '.'];
 
 export default function Results() {
   const session = useScanSession();
@@ -164,16 +179,14 @@ function ScanningState() {
             <Animated.View style={pulseStyle}>
               <PigmentBloom size={200} />
             </Animated.View>
-            <Text
-              style={{
-                fontFamily: fonts.hand,
-                fontSize: 32,
-                lineHeight: 36,
-                color: colors.ink,
-                marginTop: 4,
-              }}>
-              Reading your menu…
-            </Text>
+            <View
+              accessible
+              accessibilityLabel="Reading your menu…"
+              style={{ marginTop: 4, flexDirection: 'row' }}>
+              {HEADLINE_SEGMENTS.map((segment, index) => (
+                <BlinkSegment key={index} text={segment} delay={index * DOT_STAGGER_MS} />
+              ))}
+            </View>
             <Text
               style={{
                 fontSize: 15,
@@ -190,6 +203,17 @@ function ScanningState() {
       </View>
     </View>
   );
+}
+
+// Each word and dot of the scanning headline blinks on the same staggered
+// timing, so a single wave of ink travels across the whole line.
+function BlinkSegment({ text, delay }: { text: string; delay: number }) {
+  const v = useSharedValue(0);
+  useEffect(() => {
+    v.set(withDelay(delay, withRepeat(withTiming(1, DOT_TIMING), -1, true)));
+  }, [v, delay]);
+  const style = useAnimatedStyle(() => ({ opacity: 0.25 + v.get() * 0.75 }));
+  return <Animated.Text style={[HEADLINE_TEXT, style]}>{text}</Animated.Text>;
 }
 
 // The scan failed: a soft apology and a single retry.
