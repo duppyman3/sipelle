@@ -14,10 +14,6 @@ const riseBy14: { opacity: number; transform: [{ translateY: number }] } = {
 
 export const enterSoft = FadeInDown.duration(500).easing(softEasing).withInitialValues(riseBy14);
 
-export const enterSplashCaption = FadeInDown.duration(900)
-  .easing(softEasing)
-  .withInitialValues(riseBy14);
-
 export const toastEnter = FadeInDown.duration(200).easing(softEasing).withInitialValues(riseBy14);
 
 export const toastExit = FadeOut.duration(150);
