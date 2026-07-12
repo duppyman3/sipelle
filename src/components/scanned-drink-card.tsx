@@ -18,8 +18,8 @@ const ROSE_WASH = '#F1D3D8';
 // Compiler never rebuilds it per render.
 const PULSE_TIMING = { duration: 1500, easing: softEasing };
 
-// The image tile echoes drink-card.tsx exactly (104×109, radius 26) so scanned
-// cards feel identical to the static demo cards.
+// The image tile is a fixed 104×109 with a 26px radius, applied to every tile
+// state so cards keep one silhouette while photos are still loading.
 const TILE_BASE: ViewStyle = {
   width: 104,
   height: 109,

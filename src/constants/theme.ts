@@ -32,7 +32,6 @@ export const shadows = {
   card: '0 10px 24px rgba(90, 70, 50, 0.14)',
   tile: '0 2px 8px rgba(90, 70, 50, 0.10)',
   pill: '0 4px 10px rgba(90, 70, 50, 0.18)',
-  toast: '0 6px 16px rgba(0, 0, 0, 0.2)',
 } as const;
 
 export const layout = {

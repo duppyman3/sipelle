@@ -34,10 +34,12 @@ export async function scanMenu(): Promise<void> {
       Alert.alert('Scan failed', 'The photo could not be read. Please try again.');
       return;
     }
-    // Hand the base64 JPEG to the scan store, then show the results screen,
-    // which subscribes to the session and renders drinks as they arrive.
+    // Hand the base64 JPEG to the scan store, then show the results screen.
+    // navigate pushes results when it isn't on the stack (the Home flow) and
+    // no-ops when it's already focused (a scan from the results empty state) —
+    // there the scan-session store update drives the in-place transition.
     beginScan(asset.base64);
-    router.push('/results');
+    router.navigate('/results');
   } finally {
     scanning = false;
   }

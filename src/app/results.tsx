@@ -1,19 +1,17 @@
 import { router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { ScrollView, Text, View, type TextStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Ellipse } from 'react-native-svg';
 
-import { DrinkCard } from '@/components/drink-card';
 import { PressableScale } from '@/components/pressable-scale';
 import { ResultsWash } from '@/components/results-wash';
 import { ScannedDrinkCard } from '@/components/scanned-drink-card';
-import { Toast, type ToastData } from '@/components/toast';
 import { enterSoft, softEasing } from '@/constants/motion';
 import { colors, fonts, layout, shadows } from '@/constants/theme';
-import { DRINKS, VENUE_NAME } from '@/data/menu';
+import { scanMenu } from '@/data/scan-menu';
 import { retryScan, useScanSession, type SessionDrink } from '@/data/scan-session';
 
 // Slow breath for the scanning motif; module scope so React Compiler never
@@ -46,68 +44,72 @@ export default function Results() {
     case 'ready':
       return <ReadyResults venueName={session.venueName} drinks={session.drinks} />;
     default:
-      return <IdleResults />;
+      return <EmptyState />;
   }
 }
 
-// The static demo reached via the Home category chips — unchanged from before
-// the scan flow existed, toast wiring and all.
-function IdleResults() {
+// No scan yet: a still pigment pool and an invitation to point the camera.
+function EmptyState() {
   const insets = useSafeAreaInsets();
-  const [toast, setToast] = useState<ToastData | null>(null);
-  const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const toastCounter = useRef(0);
-
-  useEffect(() => {
-    return () => {
-      if (dismissTimer.current) {
-        clearTimeout(dismissTimer.current);
-      }
-    };
-  }, []);
-
-  // Placeholder behavior per the handoff — replace with the real favourites
-  // flow when it exists.
-  const showToast = (name: string) => {
-    if (dismissTimer.current) {
-      clearTimeout(dismissTimer.current);
-    }
-    toastCounter.current += 1;
-    setToast({ id: toastCounter.current, message: `${name} — added to favourites` });
-    dismissTimer.current = setTimeout(() => setToast(null), 1600);
-  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.washCream }}>
       <ResultsWash />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
+      <View
+        style={{
+          flex: 1,
           paddingTop: insets.top + 8,
           paddingHorizontal: layout.gutter,
           paddingBottom: insets.bottom + 32,
         }}>
-        <Animated.View entering={enterSoft}>
-          <BackButton />
-          <Text
-            style={{
-              fontFamily: fonts.serif,
-              fontSize: 30,
-              lineHeight: 32,
-              textAlign: 'center',
-              marginTop: -8,
-              color: colors.ink,
-            }}>
-            {VENUE_NAME}
-          </Text>
-          <View style={{ gap: 20, marginTop: 24 }}>
-            {DRINKS.map((drink) => (
-              <DrinkCard key={drink.id} drink={drink} onPress={() => showToast(drink.name)} />
-            ))}
-          </View>
-        </Animated.View>
-      </ScrollView>
-      <Toast toast={toast} />
+        <BackButton />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Animated.View entering={enterSoft} style={{ alignSelf: 'stretch', alignItems: 'center' }}>
+            <PigmentBloom size={200} />
+            {/* stretch + textAlign center guard the RN-Android last-word
+                clip on intrinsic-width custom-font text; the entering
+                animation's re-layout re-breaks the line. */}
+            <Text
+              style={{
+                fontFamily: fonts.hand,
+                fontSize: 32,
+                lineHeight: 36,
+                color: colors.ink,
+                marginTop: 4,
+                alignSelf: 'stretch',
+                textAlign: 'center',
+              }}>
+              A blank canvas
+            </Text>
+            <Text
+              style={{
+                fontSize: 15,
+                lineHeight: 21,
+                color: colors.body,
+                marginTop: 8,
+                textAlign: 'center',
+                maxWidth: 280,
+              }}>
+              Scan a drinks menu and we&apos;ll paint every pour.
+            </Text>
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel="Scan a menu"
+              onPress={scanMenu}
+              style={{
+                marginTop: 22,
+                backgroundColor: colors.ink,
+                borderRadius: 999,
+                paddingVertical: 14,
+                paddingHorizontal: 32,
+                alignItems: 'center',
+                boxShadow: shadows.pill,
+              }}>
+              <Text style={{ color: colors.tile, fontSize: 16, fontWeight: '600' }}>Scan a menu</Text>
+            </PressableScale>
+          </Animated.View>
+        </View>
+      </View>
     </View>
   );
 }
@@ -232,13 +234,16 @@ function ErrorState({ message }: { message: string }) {
         }}>
         <BackButton />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Animated.View entering={enterSoft} style={{ alignItems: 'center' }}>
+          <Animated.View entering={enterSoft} style={{ alignSelf: 'stretch', alignItems: 'center' }}>
+            {/* same last-word-clip guard as EmptyState */}
             <Text
               style={{
                 fontFamily: fonts.hand,
                 fontSize: 32,
                 lineHeight: 36,
                 color: colors.ink,
+                alignSelf: 'stretch',
+                textAlign: 'center',
               }}>
               The ink smudged
             </Text>

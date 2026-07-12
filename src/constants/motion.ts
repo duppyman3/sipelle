@@ -1,4 +1,4 @@
-import { Easing, FadeInDown, FadeOut } from 'react-native-reanimated';
+import { Easing, FadeInDown } from 'react-native-reanimated';
 
 // Builders live at module scope so React Compiler memoization never
 // recreates them per render.
@@ -13,9 +13,5 @@ const riseBy14: { opacity: number; transform: [{ translateY: number }] } = {
 };
 
 export const enterSoft = FadeInDown.duration(500).easing(softEasing).withInitialValues(riseBy14);
-
-export const toastEnter = FadeInDown.duration(200).easing(softEasing).withInitialValues(riseBy14);
-
-export const toastExit = FadeOut.duration(150);
 
 export const pressTiming = { duration: 120, easing: softEasing };
