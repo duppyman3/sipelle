@@ -14,7 +14,7 @@ import { enterSoft, softEasing } from '@/constants/motion';
 import { colors, fonts, layout, shadows } from '@/constants/theme';
 import { CATEGORIES, DRINK_CATEGORY_IDS, type DrinkCategory } from '@/data/menu';
 import { setShowNutrition, useShowNutrition } from '@/data/nutrition-pref';
-import { useIsPremium } from '@/data/premium';
+import { PREMIUM_AVAILABLE, useIsPremium } from '@/data/premium';
 import { scanMenu } from '@/data/scan-menu';
 import { retryScan, useScanSession, type ScanActivity, type ScanSession } from '@/data/scan-session';
 
@@ -179,7 +179,7 @@ function ReadyResults({ session, initialFilter }: { session: ScanSession; initia
               setFilter(id);
             }}
           />
-          <NutritionPill />
+          {PREMIUM_AVAILABLE ? <NutritionPill /> : null}
           {drinks.length > 0 ? (
             <View style={{ gap: 20, marginTop: 24 }}>
               {drinks.map((drink) => (

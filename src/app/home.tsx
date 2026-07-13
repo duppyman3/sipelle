@@ -95,28 +95,30 @@ export default function Home() {
       </ScrollView>
       <HomeTabBar />
       {/* Testing-only: clears the saved name and premium, then restarts the first-run flow. */}
-      <PressableScale
-        accessibilityRole="button"
-        accessibilityLabel="Reset saved name"
-        onPress={() => {
-          clearFirstName();
-          clearPremiumForTesting();
-          router.replace('/');
-        }}
-        style={{
-          position: 'absolute',
-          bottom: layout.tabBarHeight + insets.bottom + 12,
-          right: 14,
-          width: 44,
-          height: 44,
-          borderRadius: 999,
-          backgroundColor: colors.tile,
-          boxShadow: shadows.tile,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-        <RotateCcw size={20} color={colors.ink} strokeWidth={2} />
-      </PressableScale>
+      {__DEV__ ? (
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel="Reset saved name"
+          onPress={() => {
+            clearFirstName();
+            clearPremiumForTesting();
+            router.replace('/');
+          }}
+          style={{
+            position: 'absolute',
+            bottom: layout.tabBarHeight + insets.bottom + 12,
+            right: 14,
+            width: 44,
+            height: 44,
+            borderRadius: 999,
+            backgroundColor: colors.tile,
+            boxShadow: shadows.tile,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+          <RotateCcw size={20} color={colors.ink} strokeWidth={2} />
+        </PressableScale>
+      ) : null}
     </View>
   );
 }

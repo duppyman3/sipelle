@@ -1,5 +1,5 @@
 import { openURL } from 'expo-linking';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { Candy, Flame, Wheat, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
@@ -12,7 +12,7 @@ import { ResultsWash } from '@/components/results-wash';
 import { enterSoft } from '@/constants/motion';
 import { colors, fonts, layout, shadows } from '@/constants/theme';
 import { setShowNutrition } from '@/data/nutrition-pref';
-import { purchasePremium, restorePurchases, usePremiumPrice } from '@/data/premium';
+import { PREMIUM_AVAILABLE, purchasePremium, restorePurchases, usePremiumPrice } from '@/data/premium';
 
 // The paid nutrition upsell: a plain fade route (not a modal sheet) so the
 // close affordance and transition read the same on every platform.
@@ -21,6 +21,10 @@ export default function Paywall() {
   const price = usePremiumPrice();
   const [busy, setBusy] = useState<'purchase' | 'restore' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  if (!PREMIUM_AVAILABLE) {
+    return <Redirect href="/home" />;
+  }
 
   // Close and post-purchase both return to results; replace covers a deep link
   // into the paywall with no back stack to pop.

@@ -3,9 +3,12 @@ import { useSyncExternalStore } from 'react';
 import '@/data/install-storage';
 
 // ── Phase-2 swap boundary ──
-// DEV STUB: the purchase below is simulated locally — this build must NOT
-// ship to app stores. When RevenueCat lands, this module is the ONLY file
-// that changes: keep every exported signature identical.
+// DEV STUB: the purchase below is simulated locally, so it must never grant
+// entitlement in a store build. PREMIUM_AVAILABLE is the release gate — __DEV__
+// today, so release builds fail closed: getSnapshot() stays false, purchase and
+// restore no-op, and callers render no premium UI or paywall path. When
+// RevenueCat lands, this module is the ONLY file that changes: flip
+// PREMIUM_AVAILABLE to always-true and keep every exported signature identical.
 //   - sipelle.premium becomes a cold-start mirror of the RevenueCat
 //     CustomerInfo 'premium' entitlement (updated from the SDK listener).
 //   - purchasePremium(): Purchases.purchasePackage(annual); user-cancel →
@@ -14,12 +17,8 @@ import '@/data/install-storage';
 //     entitlement active after the call.
 //   - usePremiumPrice(): store-localized priceString from the current
 //     offering's annual package (the constant below is the fallback).
-// The guard below makes that swap a release gate: any non-dev build fails at
-// import rather than silently granting every user premium for $0.
 
-if (!__DEV__) {
-  throw new Error('premium.ts dev stub must be replaced with RevenueCat before release');
-}
+export const PREMIUM_AVAILABLE = __DEV__;
 
 const FALLBACK_PRICE = '$2.99/year';
 const STORAGE_KEY = 'sipelle.premium';
@@ -33,6 +32,9 @@ let cached: boolean | null = null;
 const listeners = new Set<() => void>();
 
 function getSnapshot(): boolean {
+  if (!PREMIUM_AVAILABLE) {
+    return false;
+  }
   if (cached !== null) {
     return cached;
   }
@@ -72,12 +74,18 @@ export function usePremiumPrice(): string {
 }
 
 export async function purchasePremium(): Promise<PurchaseResult> {
+  if (!PREMIUM_AVAILABLE) {
+    return { ok: false, reason: 'failed' };
+  }
   await delay(1200);
   setEntitled(true);
   return { ok: true };
 }
 
 export async function restorePurchases(): Promise<RestoreResult> {
+  if (!PREMIUM_AVAILABLE) {
+    return { ok: true, restored: false };
+  }
   await delay(800);
   return { ok: true, restored: getSnapshot() };
 }

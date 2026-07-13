@@ -12,7 +12,7 @@ import { PressableScale } from '@/components/pressable-scale';
 import { softEasing } from '@/constants/motion';
 import { colors, fonts, shadows } from '@/constants/theme';
 import { useShowNutrition } from '@/data/nutrition-pref';
-import { useIsPremium } from '@/data/premium';
+import { PREMIUM_AVAILABLE, useIsPremium } from '@/data/premium';
 import { retryDrinkImage, type SessionDrink } from '@/data/scan-session';
 
 // Rose pigment softened toward the card — a gentle "smudge" wash for a failed
@@ -94,7 +94,7 @@ function NutritionLine({ nutrition }: { nutrition: DrinkNutrition }) {
 
   // Only tease the paywall when there's locked premium data to reveal — a drink
   // with just ABV shows it plainly rather than baiting an upgrade.
-  if (!isPremium && hasPremiumData) {
+  if (PREMIUM_AVAILABLE && !isPremium && hasPremiumData) {
     return (
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <PressableScale
