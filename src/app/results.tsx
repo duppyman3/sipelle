@@ -39,9 +39,14 @@ const HEADLINE_SEGMENTS = ['Reading ', 'your ', 'menu', '.', '.', '.'];
 
 type FilterId = 'all' | DrinkCategory;
 
+// Results shows its own chip order — the Home screen keeps the CATEGORIES order.
+const RESULTS_CATEGORY_ORDER: readonly DrinkCategory[] = ['cocktails', 'wine', 'exotic', 'beer', 'shots'];
+
 const FILTERS: { id: FilterId; label: string }[] = [
   { id: 'all', label: 'All' },
-  ...CATEGORIES.map((category) => ({ id: category.id, label: category.label })),
+  ...[...CATEGORIES]
+    .sort((a, b) => RESULTS_CATEGORY_ORDER.indexOf(a.id) - RESULTS_CATEGORY_ORDER.indexOf(b.id))
+    .map((category) => ({ id: category.id, label: category.label })),
 ];
 
 // The footer's compact wave — same stagger as the full-screen headline.
