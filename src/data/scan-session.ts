@@ -8,7 +8,8 @@ import type { DrinkCategory } from '@/data/menu';
 
 // In-memory store for the current app session. Drinks and the venue name
 // accumulate across scans — a drink menu spans several pages, so every new photo
-// adds to what's already been read, and the store resets only when the app
+// lands its drinks above what's already been read, and the venue name follows the
+// newest scan that could read a header. The store resets only when the app
 // restarts. scanToken gates only the activity status: the drinks and their image
 // pipeline are keyed by drink id, so starting a new scan never orphans the image
 // generation already in flight for earlier pages.
@@ -175,9 +176,10 @@ async function run(): Promise<void> {
     }
     return;
   }
-  // Appending is never token-gated — a slower older scan still lands its drinks;
-  // only the newest scan owns the activity status. venueName keeps the first
-  // non-null value, since later pages usually crop the header off.
+  // Landing drinks is never token-gated — a slower older scan still lands its
+  // drinks; only the newest scan owns the activity status. New drinks land on
+  // top, and venueName follows the newest scan's header, keeping the previous
+  // name when a later page crops it off.
   const seen = new Set(session.drinks.map((drink) => drinkKey(drink.name)));
   const fresh: SessionDrink[] = [];
   for (const drink of scan.drinks) {
@@ -190,8 +192,8 @@ async function run(): Promise<void> {
   track('scan_succeeded', { drink_count: scan.drinks.length, new_drink_count: fresh.length, venue_detected: scan.venueName != null });
   setSession({
     activity: token === scanToken ? { status: 'idle' } : session.activity,
-    venueName: session.venueName ?? scan.venueName,
-    drinks: [...session.drinks, ...fresh],
+    venueName: scan.venueName ?? session.venueName,
+    drinks: [...fresh, ...session.drinks],
   });
   enqueueImages(fresh.map((drink) => drink.id));
 }
@@ -204,6 +206,15 @@ export function beginScan(base64Jpeg: string): void {
 export function retryScan(): void {
   if (photoBase64 !== null) {
     void run();
+  }
+}
+
+// Backing out of the full-screen error returns to the results underneath —
+// acknowledge the failure without retrying. Guarded on 'error' so a dismiss
+// can never clobber a fresher scan that has already flipped to 'scanning'.
+export function dismissScanError(): void {
+  if (session.activity.status === 'error') {
+    setSession({ ...session, activity: { status: 'idle' } });
   }
 }
 

@@ -40,7 +40,7 @@ In app code, the tokens are already ported to `src/constants/theme.ts` (colors, 
 
 - Companion marketing/support site for the app. **Source is NOT in this repo** — it lives at `D:\GITHUB\sipelle_website` (GitHub `duppyman3/sipelle_website`; flat HTML/CSS on Cloudflare, own CLAUDE.md). Make website changes there, never here.
 - **This repo is the design upstream**: the website's `design-system/` is a byte-identical copy of `design/design_handoff_sipelle_app` (plus a web-only `WEB-NOTES.md`). After changing the design handoff here, re-copy it into the website repo — the copies must not drift.
-- Live pages: `/` (landing), `/privacy` (privacy policy), `/terms` (terms of service), `/support` (contact info@sipelle.app) — extensionless URLs are canonical (`.html` forms 307-redirect to them). `src/app/paywall.tsx` links to `https://www.sipelle.app/terms` and `/privacy`. The terms copy is a placeholder draft (effective date, legal entity, governing law, mailing address all TBD) — finalize before store submission.
+- Live pages: `/` (landing), `/privacy` (privacy policy), `/terms` (terms of service), `/support` (contact info@sipelle.app) — extensionless URLs are canonical (`.html` forms 307-redirect to them). `src/app/paywall.tsx` links to `https://www.sipelle.app/terms` and `/privacy`. The terms copy was finalized 2026-07-14 (effective July 14, 2026; entity Nicholas Titus; Florida law; contact info@sipelle.app — email only, no mailing address).
 - The Edge Functions send `HTTP-Referer: https://www.sipelle.app` on OpenRouter calls (`supabase/functions/_shared/openrouter.ts`).
 
 

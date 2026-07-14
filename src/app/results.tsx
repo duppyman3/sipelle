@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Camera, Flame, Lock } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View, type TextStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,7 +16,7 @@ import { CATEGORIES, DRINK_CATEGORY_IDS, type DrinkCategory } from '@/data/menu'
 import { setShowNutrition, useShowNutrition } from '@/data/nutrition-pref';
 import { PREMIUM_AVAILABLE, useIsPremium } from '@/data/premium';
 import { scanMenu } from '@/data/scan-menu';
-import { retryScan, useScanSession, type ScanActivity, type ScanSession } from '@/data/scan-session';
+import { dismissScanError, retryScan, useScanSession, type ScanSession } from '@/data/scan-session';
 
 // Slow breath for the scanning motif; module scope so React Compiler never
 // rebuilds it per render.
@@ -49,10 +49,6 @@ const FILTERS: { id: FilterId; label: string }[] = [
     .map((category) => ({ id: category.id, label: category.label })),
 ];
 
-// The footer's compact wave — same stagger as the full-screen headline.
-const FOOTER_SEGMENTS = ['Reading ', 'the ', 'next ', 'page', '.', '.', '.'];
-const FOOTER_TEXT: TextStyle = { fontFamily: fonts.hand, fontSize: 22, lineHeight: 26, color: colors.ink };
-
 function toFilterId(value: string | string[] | undefined): FilterId {
   return typeof value === 'string' && (DRINK_CATEGORY_IDS as readonly string[]).includes(value)
     ? (value as DrinkCategory)
@@ -69,13 +65,15 @@ export default function Results() {
     session.drinks.length > 0 ? toFilterId(params.category) : 'all'
   );
 
+  // Activity owns the screen: any in-flight scan or failure takes over
+  // full-screen — existing results wait in the store underneath.
+  if (session.activity.status === 'scanning') {
+    return <ScanningState />;
+  }
+  if (session.activity.status === 'error') {
+    return <ErrorState message={session.activity.message} hasDrinks={session.drinks.length > 0} />;
+  }
   if (session.drinks.length === 0) {
-    if (session.activity.status === 'scanning') {
-      return <ScanningState />;
-    }
-    if (session.activity.status === 'error') {
-      return <ErrorState message={session.activity.message} />;
-    }
     return <EmptyState />;
   }
   return <ReadyResults session={session} initialFilter={initialFilter} />;
@@ -154,10 +152,23 @@ function ReadyResults({ session, initialFilter }: { session: ScanSession; initia
   const [filter, setFilter] = useState(initialFilter);
   const drinks = filter === 'all' ? session.drinks : session.drinks.filter((drink) => drink.category === filter);
 
+  const scrollRef = useRef<ScrollView>(null);
+  // A successful rescan now remounts ReadyResults from the full-screen scanning
+  // state, so it already starts at the top. This effect only matters when an
+  // older overlapped scan lands drinks while this screen stays mounted: the top
+  // item's id changes exactly when a scan prepends something fresh — image-status
+  // updates never touch it — so bring the new results into view, since the scan
+  // button that spawned them lives all the way down in the footer.
+  const firstDrinkId = session.drinks[0]?.id;
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }, [firstDrinkId]);
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.washCream }}>
       <ResultsWash />
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: insets.top + 8,
@@ -194,7 +205,7 @@ function ReadyResults({ session, initialFilter }: { session: ScanSession; initia
           ) : (
             <FilteredEmpty filter={filter} />
           )}
-          <ListFooter activity={session.activity} />
+          <ListFooter />
         </Animated.View>
       </ScrollView>
     </View>
@@ -304,65 +315,10 @@ function FilteredEmpty({ filter }: { filter: FilterId }) {
   );
 }
 
-// Below the cards, the session's live edge: a scan in progress, a soft inline
-// failure, or the invitation to add the next page.
-function ListFooter({ activity }: { activity: ScanActivity }) {
-  if (activity.status === 'scanning') {
-    return (
-      <View
-        accessible
-        accessibilityLabel="Reading the next page…"
-        style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 28 }}>
-        {FOOTER_SEGMENTS.map((segment, index) => (
-          <BlinkSegment key={index} text={segment} delay={index * DOT_STAGGER_MS} textStyle={FOOTER_TEXT} />
-        ))}
-      </View>
-    );
-  }
-
-  if (activity.status === 'error') {
-    return (
-      <View style={{ alignItems: 'center', marginTop: 28 }}>
-        <Text
-          style={{
-            fontFamily: fonts.hand,
-            fontSize: 22,
-            lineHeight: 26,
-            color: colors.ink,
-            alignSelf: 'stretch',
-            textAlign: 'center',
-          }}>
-          The ink smudged
-        </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            lineHeight: 20,
-            color: colors.body,
-            marginTop: 4,
-            textAlign: 'center',
-            maxWidth: 280,
-          }}>
-          {activity.message}
-        </Text>
-        <PressableScale
-          accessibilityRole="button"
-          accessibilityLabel="Try again"
-          onPress={() => retryScan()}
-          style={{
-            marginTop: 14,
-            backgroundColor: colors.ink,
-            borderRadius: 999,
-            paddingVertical: 10,
-            paddingHorizontal: 26,
-            boxShadow: shadows.pill,
-          }}>
-          <Text style={{ color: colors.tile, fontSize: 15, fontWeight: '600' }}>Try again</Text>
-        </PressableScale>
-      </View>
-    );
-  }
-
+// Below the cards, the invitation to add the next page. ReadyResults only
+// renders while the session is idle, so the scanning and failure states now own
+// the full screen instead of appearing here.
+function ListFooter() {
   return (
     <PressableScale
       accessibilityRole="button"
@@ -445,17 +401,19 @@ function ScanningState() {
 
 // Each word and dot of the scanning headline blinks on the same staggered
 // timing, so a single wave of ink travels across the whole line.
-function BlinkSegment({ text, delay, textStyle = HEADLINE_TEXT }: { text: string; delay: number; textStyle?: TextStyle }) {
+function BlinkSegment({ text, delay }: { text: string; delay: number }) {
   const v = useSharedValue(0);
   useEffect(() => {
     v.set(withDelay(delay, withRepeat(withTiming(1, DOT_TIMING), -1, true)));
   }, [v, delay]);
   const style = useAnimatedStyle(() => ({ opacity: 0.25 + v.get() * 0.75 }));
-  return <Animated.Text style={[textStyle, style]}>{text}</Animated.Text>;
+  return <Animated.Text style={[HEADLINE_TEXT, style]}>{text}</Animated.Text>;
 }
 
-// The scan failed: a soft apology and a single retry.
-function ErrorState({ message }: { message: string }) {
+// The scan failed: a soft apology and a single retry. With results already on
+// the canvas, the back arrow dismisses the error to return to them; on a blank
+// session it leaves the screen as usual.
+function ErrorState({ message, hasDrinks }: { message: string; hasDrinks: boolean }) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -468,7 +426,7 @@ function ErrorState({ message }: { message: string }) {
           paddingHorizontal: layout.gutter,
           paddingBottom: insets.bottom + 32,
         }}>
-        <BackButton />
+        <BackButton onPress={hasDrinks ? dismissScanError : undefined} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <Animated.View entering={enterSoft} style={{ alignSelf: 'stretch', alignItems: 'center' }}>
             {/* same last-word-clip guard as EmptyState */}
@@ -516,12 +474,12 @@ function ErrorState({ message }: { message: string }) {
   );
 }
 
-function BackButton() {
+function BackButton({ onPress }: { onPress?: () => void }) {
   return (
     <PressableScale
       accessibilityRole="button"
       accessibilityLabel="Back"
-      onPress={() => router.back()}
+      onPress={onPress ?? (() => router.back())}
       style={{
         width: 44,
         height: 44,
