@@ -6,7 +6,6 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryChip } from '@/components/category-chip';
-import { HomeTabBar } from '@/components/home-tab-bar';
 import { PressableScale } from '@/components/pressable-scale';
 import { enterSoft } from '@/constants/motion';
 import { colors, fonts, homeGradient, layout, shadows } from '@/constants/theme';
@@ -35,7 +34,7 @@ export default function Home() {
         contentContainerStyle={{
           paddingTop: insets.top + 12,
           paddingHorizontal: layout.gutter,
-          paddingBottom: layout.tabBarHeight + insets.bottom + 24,
+          paddingBottom: insets.bottom + 24,
         }}>
         <Animated.View entering={enterSoft}>
           <View style={{ paddingTop: 6 }}>
@@ -93,7 +92,6 @@ export default function Home() {
           </PressableScale>
         </Animated.View>
       </ScrollView>
-      <HomeTabBar />
       {/* Testing-only: clears the saved name and premium, then restarts the first-run flow. */}
       {__DEV__ ? (
         <PressableScale
@@ -106,7 +104,7 @@ export default function Home() {
           }}
           style={{
             position: 'absolute',
-            bottom: layout.tabBarHeight + insets.bottom + 12,
+            bottom: insets.bottom + 12,
             right: 14,
             width: 44,
             height: 44,

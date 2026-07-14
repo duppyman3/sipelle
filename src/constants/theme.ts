@@ -36,5 +36,4 @@ export const shadows = {
 
 export const layout = {
   gutter: 20,
-  tabBarHeight: 72,
 } as const;
