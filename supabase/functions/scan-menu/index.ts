@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
   const deadline = Date.now() + HARD_DEADLINE_MS;
   let response: ChatCompletion;
   try {
-    response = await runScan(imageBase64, deadline);
+    response = await runScan(imageBase64, deadline, deviceId);
   } catch (err) {
     // Upstream text can name models, providers, and our billing state — log it, don't relay it.
     if (err instanceof UpstreamError) {
@@ -101,9 +101,15 @@ Deno.serve(async (req) => {
   return json(200, await signMenuScan(normalizeMenuScan(parsed), deviceId));
 });
 
-async function runScan(base64Jpeg: string, deadline: number): Promise<ChatCompletion> {
+async function runScan(base64Jpeg: string, deadline: number, deviceId: string): Promise<ChatCompletion> {
+  const meta = { deviceId, spanName: 'scan-menu' } as const;
   try {
-    return await postOpenRouter<ChatCompletion>('/chat/completions', buildScanBody(base64Jpeg, true), SCAN_TIMEOUT_MS);
+    return await postOpenRouter<ChatCompletion>(
+      '/chat/completions',
+      buildScanBody(base64Jpeg, true),
+      SCAN_TIMEOUT_MS,
+      meta,
+    );
   } catch (err) {
     // Some providers reject the reasoning parameter (400 invalid_request, or 404
     // when require_parameters routing finds no matching endpoint). Retry once without
@@ -114,6 +120,7 @@ async function runScan(base64Jpeg: string, deadline: number): Promise<ChatComple
         '/chat/completions',
         buildScanBody(base64Jpeg, false),
         Math.min(SCAN_TIMEOUT_MS, remaining),
+        meta,
       );
     }
     throw err;

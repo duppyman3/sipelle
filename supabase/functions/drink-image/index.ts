@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
 
   let response: ImageResponse;
   try {
-    response = await generateImage(prompt);
+    response = await generateImage(prompt, deviceId);
   } catch (err) {
     // Upstream text can name models, providers, and our billing state — log it, don't relay it.
     if (err instanceof UpstreamError) {
@@ -111,7 +111,8 @@ Deno.serve(async (req) => {
   return json(200, { image: `data:${image.media_type ?? 'image/jpeg'};base64,${image.b64_json}` });
 });
 
-async function generateImage(prompt: string): Promise<ImageResponse> {
+async function generateImage(prompt: string, deviceId: string): Promise<ImageResponse> {
+  const meta = { deviceId, spanName: 'drink-image' } as const;
   try {
     return await postOpenRouter<ImageResponse>(
       '/images',
@@ -125,6 +126,7 @@ async function generateImage(prompt: string): Promise<ImageResponse> {
         output_compression: 70,
       },
       IMAGE_TIMEOUT_MS,
+      meta,
     );
   } catch (err) {
     // `size` and `output_format` are not advertised for this model and may be
@@ -140,6 +142,7 @@ async function generateImage(prompt: string): Promise<ImageResponse> {
           output_compression: 70,
         },
         IMAGE_TIMEOUT_MS,
+        meta,
       );
     }
     throw err;
