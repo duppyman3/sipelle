@@ -153,12 +153,10 @@ function ReadyResults({ session, initialFilter }: { session: ScanSession; initia
   const drinks = filter === 'all' ? session.drinks : session.drinks.filter((drink) => drink.category === filter);
 
   const scrollRef = useRef<ScrollView>(null);
-  // A successful rescan now remounts ReadyResults from the full-screen scanning
-  // state, so it already starts at the top. This effect only matters when an
-  // older overlapped scan lands drinks while this screen stays mounted: the top
-  // item's id changes exactly when a scan prepends something fresh — image-status
-  // updates never touch it — so bring the new results into view, since the scan
-  // button that spawned them lives all the way down in the footer.
+  // A successful rescan remounts ReadyResults from the full-screen scanning
+  // state, so it already starts at the top. This effect is just a defensive
+  // scroll-to-top should the list identity ever change in place — i.e. the first
+  // drink's id shifting while this screen stays mounted.
   const firstDrinkId = session.drinks[0]?.id;
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -315,14 +313,15 @@ function FilteredEmpty({ filter }: { filter: FilterId }) {
   );
 }
 
-// Below the cards, the invitation to add the next page. ReadyResults only
-// renders while the session is idle, so the scanning and failure states now own
-// the full screen instead of appearing here.
+// Below the cards, the invitation to scan a fresh menu — a new scan replaces
+// these results rather than appending to them. ReadyResults only renders while
+// the session is idle, so the scanning and failure states now own the full
+// screen instead of appearing here.
 function ListFooter() {
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel="Scan another page"
+      accessibilityLabel="Scan another menu"
       onPress={scanMenu}
       style={{
         marginTop: 28,
@@ -339,7 +338,7 @@ function ListFooter() {
       }}>
       <Camera size={17} color={colors.ink} strokeWidth={2} />
       <Text style={{ fontFamily: fonts.hand, fontSize: 20, lineHeight: 24, color: colors.ink }}>
-        Scan another page
+        Scan another menu
       </Text>
     </PressableScale>
   );

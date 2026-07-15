@@ -6,13 +6,13 @@ import { hasAiBackend, AiError } from '@/ai/backend';
 import { track, trackError } from '@/analytics/posthog';
 import type { DrinkCategory } from '@/data/menu';
 
-// In-memory store for the current app session. Drinks and the venue name
-// accumulate across scans — a drink menu spans several pages, so every new photo
-// lands its drinks above what's already been read, and the venue name follows the
-// newest scan that could read a header. The store resets only when the app
-// restarts. scanToken gates only the activity status: the drinks and their image
-// pipeline are keyed by drink id, so starting a new scan never orphans the image
-// generation already in flight for earlier pages.
+// In-memory store for the current app session. Each scan's results replace the
+// previous scan's — the drinks and the venue name both belong to the newest
+// successful scan. The store resets only when the app restarts. scanToken gates
+// both the activity status and the landing of results, so a stale overlapped
+// scan is dropped whole. The image pipeline stays keyed by drink id, and since
+// ids are never reused across scans, an image generation still in flight for a
+// replaced drink settles as a harmless no-op.
 
 export type DrinkImageStatus = 'queued' | 'generating' | 'done' | 'error';
 
@@ -76,8 +76,8 @@ export function useScanSession(): ScanSession {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
-// The same drink can show up on overlapping page photos — match names case- and
-// whitespace-insensitively so a re-shot page doesn't duplicate it.
+// The AI can list the same drink twice on one photo — match names case- and
+// whitespace-insensitively within a single scan's results so it isn't duplicated.
 function drinkKey(name: string): string {
   return name.toLowerCase().replace(/\s+/g, ' ');
 }
@@ -85,7 +85,7 @@ function drinkKey(name: string): string {
 // The image pipeline is keyed by drink id and carries no scan token. The
 // per-drink 'queued' guard is what replaces the old tokens: enqueueing the same
 // id twice simply no-ops. A fixed pool of IMAGE_CONCURRENCY drain loops caps
-// concurrency globally, however many pages get scanned.
+// concurrency globally across scans.
 async function generateOne(id: string): Promise<void> {
   const drink = session.drinks.find((item) => item.id === id);
   if (!drink || drink.imageStatus !== 'queued') {
@@ -163,8 +163,7 @@ async function run(): Promise<void> {
   }
   if (scan.drinks.length === 0) {
     track('scan_empty');
-    // Reserved for a genuinely unreadable photo. An all-duplicates rescan lands
-    // below with an empty `fresh` and settles quietly to idle instead.
+    // This error is for a photo where no drinks could be read at all.
     if (token === scanToken) {
       setSession({
         ...session,
@@ -176,11 +175,12 @@ async function run(): Promise<void> {
     }
     return;
   }
-  // Landing drinks is never token-gated — a slower older scan still lands its
-  // drinks; only the newest scan owns the activity status. New drinks land on
-  // top, and venueName follows the newest scan's header, keeping the previous
-  // name when a later page crops it off.
-  const seen = new Set(session.drinks.map((drink) => drinkKey(drink.name)));
+  // Results belong to exactly one scan now, so only the newest scan may land
+  // them — a slower stale scan is dropped whole, status and drinks alike.
+  if (token !== scanToken) {
+    return;
+  }
+  const seen = new Set<string>();
   const fresh: SessionDrink[] = [];
   for (const drink of scan.drinks) {
     const key = drinkKey(drink.name);
@@ -191,9 +191,9 @@ async function run(): Promise<void> {
   }
   track('scan_succeeded', { drink_count: scan.drinks.length, new_drink_count: fresh.length, venue_detected: scan.venueName != null });
   setSession({
-    activity: token === scanToken ? { status: 'idle' } : session.activity,
-    venueName: scan.venueName ?? session.venueName,
-    drinks: [...fresh, ...session.drinks],
+    activity: { status: 'idle' },
+    venueName: scan.venueName ?? null,
+    drinks: fresh,
   });
   enqueueImages(fresh.map((drink) => drink.id));
 }
