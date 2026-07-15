@@ -9,14 +9,15 @@ import Svg, { Ellipse } from 'react-native-svg';
 import { track } from '@/analytics/posthog';
 import { PressableScale } from '@/components/pressable-scale';
 import { ResultsWash } from '@/components/results-wash';
+import { ScanCapModal } from '@/components/scan-cap-modal';
 import { ScannedDrinkCard } from '@/components/scanned-drink-card';
 import { enterSoft, softEasing } from '@/constants/motion';
 import { colors, fonts, layout, shadows } from '@/constants/theme';
-import { CATEGORIES, DRINK_CATEGORY_IDS, type DrinkCategory } from '@/data/menu';
+import { CATEGORIES, DRINK_CATEGORY_IDS, RESULTS_CATEGORY_ORDER, type DrinkCategory } from '@/data/menu';
 import { setShowNutrition, useShowNutrition } from '@/data/nutrition-pref';
 import { PREMIUM_AVAILABLE, useIsPremium } from '@/data/premium';
 import { scanMenu } from '@/data/scan-menu';
-import { dismissScanError, retryScan, useScanSession, type ScanSession } from '@/data/scan-session';
+import { dismissCapWarning, dismissScanError, retryScan, useScanSession, type ScanSession } from '@/data/scan-session';
 
 // Slow breath for the scanning motif; module scope so React Compiler never
 // rebuilds it per render.
@@ -38,9 +39,6 @@ const HEADLINE_TEXT: TextStyle = {
 const HEADLINE_SEGMENTS = ['Reading ', 'your ', 'menu', '.', '.', '.'];
 
 type FilterId = 'all' | DrinkCategory;
-
-// Results shows its own chip order — the Home screen keeps the CATEGORIES order.
-const RESULTS_CATEGORY_ORDER: readonly DrinkCategory[] = ['cocktails', 'wine', 'exotic', 'beer', 'shots'];
 
 const FILTERS: { id: FilterId; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -150,6 +148,7 @@ function EmptyState() {
 function ReadyResults({ session, initialFilter }: { session: ScanSession; initialFilter: FilterId }) {
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState(initialFilter);
+  // session.drinks is already grouped by RESULTS_CATEGORY_ORDER at store time.
   const drinks = filter === 'all' ? session.drinks : session.drinks.filter((drink) => drink.category === filter);
 
   const scrollRef = useRef<ScrollView>(null);
@@ -206,6 +205,16 @@ function ReadyResults({ session, initialFilter }: { session: ScanSession; initia
           <ListFooter />
         </Animated.View>
       </ScrollView>
+      {session.capWarning ? (
+        <ScanCapModal
+          warning={session.capWarning}
+          onRescan={() => {
+            dismissCapWarning();
+            void scanMenu();
+          }}
+          onContinue={dismissCapWarning}
+        />
+      ) : null}
     </View>
   );
 }

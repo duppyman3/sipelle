@@ -16,6 +16,7 @@ export const colors = {
   pill: '#F7EDDD',
   rose: '#E9A6B3',
   tabInactive: 'rgba(43, 37, 40, 0.4)',
+  scrim: 'rgba(43, 37, 40, 0.35)',
 } as const;
 
 export const homeGradient = {

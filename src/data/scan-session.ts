@@ -4,7 +4,7 @@ import { generateDrinkImage } from '@/ai/drink-image';
 import { scanMenuPhoto, type DrinkNutrition, type MenuScan } from '@/ai/menu-scan';
 import { hasAiBackend, AiError } from '@/ai/backend';
 import { track, trackError } from '@/analytics/posthog';
-import type { DrinkCategory } from '@/data/menu';
+import { RESULTS_CATEGORY_ORDER, type DrinkCategory } from '@/data/menu';
 
 // In-memory store for the current app session. Each scan's results replace the
 // previous scan's — the drinks and the venue name both belong to the newest
@@ -33,20 +33,25 @@ export type ScanActivity =
   | { status: 'scanning' }
   | { status: 'error'; message: string };
 
+export type ScanCapWarning = { totalDrinkCount: number; drinkLimit: number };
+
 export type ScanSession = {
   activity: ScanActivity;
   venueName: string | null;
   drinks: SessionDrink[];
+  capWarning: ScanCapWarning | null;
 };
 
 const IMAGE_CONCURRENCY = 3;
 
-let session: ScanSession = { activity: { status: 'idle' }, venueName: null, drinks: [] };
+let session: ScanSession = { activity: { status: 'idle' }, venueName: null, drinks: [], capWarning: null };
 let photoBase64: string | null = null;
 let scanToken = 0;
 let drinkSeq = 0;
 let imageWorkers = 0;
 const imageQueue: string[] = [];
+const imageCache = new Map<string, string>();
+const IMAGE_CACHE_MAX = 90;
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void): () => void {
@@ -94,6 +99,12 @@ async function generateOne(id: string): Promise<void> {
   updateDrink(id, { imageStatus: 'generating' });
   try {
     const imageUri = await generateDrinkImage(drink);
+    while (imageCache.size >= IMAGE_CACHE_MAX) {
+      const oldest = imageCache.keys().next().value;
+      if (oldest === undefined) break;
+      imageCache.delete(oldest);
+    }
+    imageCache.set(drinkKey(drink.name), imageUri);
     updateDrink(id, { imageStatus: 'done', imageUri });
   } catch (error) {
     track('drink_image_failed', { status: error instanceof AiError ? error.status : -1 });
@@ -186,16 +197,36 @@ async function run(): Promise<void> {
     const key = drinkKey(drink.name);
     if (!seen.has(key)) {
       seen.add(key);
-      fresh.push({ ...drink, id: `drink-${++drinkSeq}`, imageStatus: 'queued', imageUri: null });
+      const cached = imageCache.get(key);
+      fresh.push({
+        ...drink,
+        id: `drink-${++drinkSeq}`,
+        imageStatus: cached ? 'done' : 'queued',
+        imageUri: cached ?? null,
+      });
     }
   }
-  track('scan_succeeded', { drink_count: scan.drinks.length, new_drink_count: fresh.length, venue_detected: scan.venueName != null });
+  // Group by category up front so the stored list, the results screen, and the
+  // image queue all share one order; stable sort keeps menu order within a group.
+  fresh.sort(
+    (a, b) => RESULTS_CATEGORY_ORDER.indexOf(a.category) - RESULTS_CATEGORY_ORDER.indexOf(b.category)
+  );
+  // The menu had more drinks than the backend may return — the results screen
+  // shows a warning so a missing drink reads as the cap, not a broken app.
+  const capWarning =
+    typeof scan.totalDrinkCount === 'number' &&
+    typeof scan.drinkLimit === 'number' &&
+    scan.totalDrinkCount > scan.drinkLimit
+      ? { totalDrinkCount: scan.totalDrinkCount, drinkLimit: scan.drinkLimit }
+      : null;
+  track('scan_succeeded', { drink_count: scan.drinks.length, new_drink_count: fresh.length, venue_detected: scan.venueName != null, total_drink_count: scan.totalDrinkCount ?? null, truncated: capWarning !== null });
   setSession({
     activity: { status: 'idle' },
     venueName: scan.venueName ?? null,
     drinks: fresh,
+    capWarning,
   });
-  enqueueImages(fresh.map((drink) => drink.id));
+  enqueueImages(fresh.filter((drink) => drink.imageStatus === 'queued').map((drink) => drink.id));
 }
 
 export function beginScan(base64Jpeg: string): void {
@@ -215,6 +246,14 @@ export function retryScan(): void {
 export function dismissScanError(): void {
   if (session.activity.status === 'error') {
     setSession({ ...session, activity: { status: 'idle' } });
+  }
+}
+
+// Continue/Rescan on the cap warning acknowledges it for this scan's results;
+// the landing setSession in run() re-arms it on every new scan.
+export function dismissCapWarning(): void {
+  if (session.capWarning !== null) {
+    setSession({ ...session, capWarning: null });
   }
 }
 

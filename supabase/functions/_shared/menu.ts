@@ -5,6 +5,11 @@
 import { MAX_NAME_CHARS, MAX_VISUAL_DESCRIPTION_CHARS, SIGNATURE_TTL_SECONDS } from '../_shared/config.ts';
 import { signDrink } from '../_shared/signature.ts';
 
+// The single source of the per-scan extraction cap — feeds the prompt, the schema's
+// maxItems, the normalization slice, and the response's drinkLimit. If raising it,
+// add an explicit max_tokens to buildScanBody so the longer list has output headroom.
+export const SCAN_DRINK_LIMIT = 30;
+
 // keep in sync with src/data/menu.ts DRINK_CATEGORY_IDS
 const DRINK_CATEGORY_IDS = ['shots', 'beer', 'exotic', 'cocktails', 'wine'] as const;
 type DrinkCategory = (typeof DRINK_CATEGORY_IDS)[number];
@@ -27,6 +32,8 @@ export type ScannedDrink = {
 export type MenuScan = {
   venueName: string | null;
   drinks: ScannedDrink[];
+  /** The model's count of every drink printed on the menu, before the extraction cap. */
+  totalDrinkCount: number | null;
 };
 
 /** A drink carrying our HMAC, which drink-image requires before it will render anything. */
@@ -35,16 +42,20 @@ export type SignedDrink = ScannedDrink & { sig: string };
 export type SignedMenuScan = {
   venueName: string | null;
   drinks: SignedDrink[];
+  totalDrinkCount: number | null;
+  /** The cap the client compares totalDrinkCount against, so it never hardcodes it. */
+  drinkLimit: number;
 };
 
 const PROMPT =
-  'Read this photo of a restaurant drink menu. Extract up to 30 alcoholic drinks, ' +
+  `Read this photo of a restaurant drink menu. Extract up to ${SCAN_DRINK_LIMIT} alcoholic drinks, ` +
   'skipping food and plain soft drinks unless the menu is entirely mocktails. Use the ' +
   'exact printed name for each drink. Estimate nutrition per standard serving. Set ' +
   'venue_name only if it is visible on the menu, otherwise null. Sort every drink into ' +
   'exactly one category of shots, beer, exotic, cocktails, or wine — pick the closest ' +
   'fit, and use exotic for anything unusual or hard to place (cider, sake, hard seltzer, ' +
-  'port, mead).';
+  'port, mead). Also count every alcoholic drink printed on the menu — including any ' +
+  `beyond the ${SCAN_DRINK_LIMIT} you extract — and report that count as total_drink_count.`;
 
 // Strict JSON schema: every object lists all properties in `required`, forbids extra
 // properties, and expresses nullables as type arrays. Descriptions steer the model.
@@ -57,7 +68,7 @@ const MENU_SCHEMA = {
     },
     drinks: {
       type: 'array',
-      maxItems: 30,
+      maxItems: SCAN_DRINK_LIMIT,
       items: {
         type: 'object',
         properties: {
@@ -108,8 +119,14 @@ const MENU_SCHEMA = {
         additionalProperties: false,
       },
     },
+    total_drink_count: {
+      type: 'integer',
+      description:
+        'The total number of alcoholic drinks printed on the menu, counted before the ' +
+        'extraction limit. Estimate if the menu is partially visible.',
+    },
   },
-  required: ['venue_name', 'drinks'],
+  required: ['venue_name', 'drinks', 'total_drink_count'],
   additionalProperties: false,
 };
 
@@ -135,6 +152,7 @@ type RawDrink = {
 type RawMenuScan = {
   venue_name?: string | null;
   drinks?: RawDrink[] | null;
+  total_drink_count?: number | null;
 };
 
 export function buildScanBody(base64Jpeg: string, includeReasoning: boolean): object {
@@ -181,7 +199,7 @@ export async function signMenuScan(scan: MenuScan, deviceId: string): Promise<Si
       sig: await signDrink(drink.name, drink.visualDescription, deviceId, exp),
     })),
   );
-  return { venueName: scan.venueName, drinks };
+  return { venueName: scan.venueName, drinks, totalDrinkCount: scan.totalDrinkCount, drinkLimit: SCAN_DRINK_LIMIT };
 }
 
 export function normalizeMenuScan(raw: RawMenuScan): MenuScan {
@@ -191,9 +209,13 @@ export function normalizeMenuScan(raw: RawMenuScan): MenuScan {
   const drinks = (raw.drinks ?? [])
     .map(normalizeDrink)
     .filter((drink): drink is ScannedDrink => drink !== null)
-    .slice(0, 30);
+    .slice(0, SCAN_DRINK_LIMIT);
 
-  return { venueName, drinks };
+  // Clamp so the reported total can never contradict the drinks we actually return.
+  const reported = toNumberOrNull(raw.total_drink_count);
+  const totalDrinkCount = reported === null ? null : Math.max(Math.round(reported), drinks.length);
+
+  return { venueName, drinks, totalDrinkCount };
 }
 
 function normalizeDrink(raw: RawDrink): ScannedDrink | null {

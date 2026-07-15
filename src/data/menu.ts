@@ -7,6 +7,10 @@ import type { CategoryArtKind } from '@/components/category-art';
 export const DRINK_CATEGORY_IDS = ['shots', 'beer', 'exotic', 'cocktails', 'wine'] as const;
 export type DrinkCategory = (typeof DRINK_CATEGORY_IDS)[number];
 
+// Results-page category order — drives the results chips, the grouped list, and
+// image generation order. The Home screen keeps the CATEGORIES order.
+export const RESULTS_CATEGORY_ORDER: readonly DrinkCategory[] = ['cocktails', 'exotic', 'wine', 'beer', 'shots'];
+
 // Chip artwork is either a raster crop from the design handoff (`image`) or
 // a palette-matched vector drawing (`art`) for categories the handoff never
 // illustrated.

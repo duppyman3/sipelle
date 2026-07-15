@@ -22,6 +22,10 @@ export type ScannedDrink = {
 export type MenuScan = {
   venueName: string | null;
   drinks: ScannedDrink[];
+  /** The model's count of every drink on the menu, before the extraction cap. Absent on older backends. */
+  totalDrinkCount?: number | null;
+  /** The backend's per-scan extraction cap. Absent on older backends. */
+  drinkLimit?: number;
 };
 
 /** Sends a menu photo (base64 JPEG) through the Sipelle backend and returns the extracted drinks. */
