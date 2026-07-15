@@ -15,6 +15,7 @@
     },
     "android": {
       "package": "app.sipelle",
+      "allowBackup": false,
       "adaptiveIcon": {
         "backgroundColor": "#FBE7E6",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
