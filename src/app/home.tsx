@@ -1,14 +1,17 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, useFocusEffect } from 'expo-router';
 import { Camera, RotateCcw } from 'lucide-react-native';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { AppState, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryChip } from '@/components/category-chip';
 import { PressableScale } from '@/components/pressable-scale';
+import { SystemDownCard } from '@/components/system-down-card';
 import { enterSoft } from '@/constants/motion';
 import { colors, fonts, homeGradient, layout, shadows } from '@/constants/theme';
+import { fetchAppStatus, type AppStatus } from '@/data/app-status';
 import { CATEGORIES } from '@/data/menu';
 import { clearPremiumForTesting } from '@/data/premium';
 import { scanMenu } from '@/data/scan-menu';
@@ -17,6 +20,29 @@ import { clearFirstName, getSavedFirstName } from '@/data/user-name';
 export default function Home() {
   const insets = useSafeAreaInsets();
   const firstName = getSavedFirstName();
+
+  const [appStatus, setAppStatus] = useState<AppStatus>({ down: false });
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      let requestId = 0;
+      const check = () => {
+        const id = ++requestId;
+        void fetchAppStatus().then((result) => {
+          if (active && id === requestId) setAppStatus(result);
+        });
+      };
+      check();
+      const sub = AppState.addEventListener('change', (state) => {
+        if (state === 'active') check();
+      });
+      return () => {
+        active = false;
+        sub.remove();
+      };
+    }, []),
+  );
 
   if (!firstName) {
     return <Redirect href="/welcome" />;
@@ -57,39 +83,45 @@ export default function Home() {
             </Text>
           </View>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 28 }}>
-            {CATEGORIES.slice(0, 3).map((category) => (
-              <CategoryChip key={category.id} category={category} />
-            ))}
-          </View>
+          {appStatus.down ? (
+            <SystemDownCard message={appStatus.message} />
+          ) : (
+            <>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 28 }}>
+                {CATEGORIES.slice(0, 3).map((category) => (
+                  <CategoryChip key={category.id} category={category} />
+                ))}
+              </View>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 31, marginTop: 20 }}>
-            {CATEGORIES.slice(3).map((category) => (
-              <CategoryChip key={category.id} category={category} />
-            ))}
-          </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 31, marginTop: 20 }}>
+                {CATEGORIES.slice(3).map((category) => (
+                  <CategoryChip key={category.id} category={category} />
+                ))}
+              </View>
 
-          <PressableScale
-            accessibilityRole="button"
-            accessibilityLabel="Scan Menu"
-            onPress={scanMenu}
-            style={{
-              alignSelf: 'center',
-              marginTop: 28,
-              width: 160,
-              height: 160,
-              borderRadius: 999,
-              backgroundColor: colors.tile,
-              boxShadow: shadows.tile,
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-            }}>
-            <Camera size={36} color={colors.ink} strokeWidth={2} />
-            <Text style={{ fontFamily: fonts.hand, fontSize: 24, lineHeight: 26, color: colors.ink }}>
-              Scan Menu
-            </Text>
-          </PressableScale>
+              <PressableScale
+                accessibilityRole="button"
+                accessibilityLabel="Scan Menu"
+                onPress={scanMenu}
+                style={{
+                  alignSelf: 'center',
+                  marginTop: 28,
+                  width: 160,
+                  height: 160,
+                  borderRadius: 999,
+                  backgroundColor: colors.tile,
+                  boxShadow: shadows.tile,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}>
+                <Camera size={36} color={colors.ink} strokeWidth={2} />
+                <Text style={{ fontFamily: fonts.hand, fontSize: 24, lineHeight: 26, color: colors.ink }}>
+                  Scan Menu
+                </Text>
+              </PressableScale>
+            </>
+          )}
         </Animated.View>
       </ScrollView>
       {/* Testing-only: clears the saved name and premium, then restarts the first-run flow. */}
