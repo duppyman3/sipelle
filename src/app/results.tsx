@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Camera, Flame, Lock } from 'lucide-react-native';
+import { ArrowLeft, Camera, Flame, Lock, Search, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, View, type TextStyle } from 'react-native';
+import { ScrollView, Text, TextInput, View, type TextStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Ellipse } from 'react-native-svg';
@@ -51,6 +51,12 @@ function toFilterId(value: string | string[] | undefined): FilterId {
   return typeof value === 'string' && (DRINK_CATEGORY_IDS as readonly string[]).includes(value)
     ? (value as DrinkCategory)
     : 'all';
+}
+
+// Fold a drink name or the raw query to a comparable key: lowercase, collapse
+// runs of whitespace, and trim so a spaces-only query filters nothing.
+function searchKey(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
 export default function Results() {
@@ -148,8 +154,12 @@ function EmptyState() {
 function ReadyResults({ session, initialFilter }: { session: ScanSession; initialFilter: FilterId }) {
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState(initialFilter);
+  const [query, setQuery] = useState('');
+  const search = searchKey(query);
   // session.drinks is already grouped by RESULTS_CATEGORY_ORDER at store time.
-  const drinks = filter === 'all' ? session.drinks : session.drinks.filter((drink) => drink.category === filter);
+  const byCategory = filter === 'all' ? session.drinks : session.drinks.filter((drink) => drink.category === filter);
+  // Name-only, case- and whitespace-insensitive; AND-ed with the category above.
+  const drinks = search === '' ? byCategory : byCategory.filter((drink) => searchKey(drink.name).includes(search));
 
   const scrollRef = useRef<ScrollView>(null);
   // A successful rescan remounts ReadyResults from the full-screen scanning
@@ -167,6 +177,7 @@ function ReadyResults({ session, initialFilter }: { session: ScanSession; initia
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           paddingTop: insets.top + 8,
           paddingHorizontal: layout.gutter,
@@ -193,12 +204,15 @@ function ReadyResults({ session, initialFilter }: { session: ScanSession; initia
             }}
           />
           {PREMIUM_AVAILABLE ? <NutritionPill /> : null}
+          <SearchField query={query} onChange={setQuery} />
           {drinks.length > 0 ? (
             <View style={{ gap: 20, marginTop: 24 }}>
               {drinks.map((drink) => (
                 <ScannedDrinkCard key={drink.id} drink={drink} />
               ))}
             </View>
+          ) : search !== '' ? (
+            <SearchEmpty />
           ) : (
             <FilteredEmpty filter={filter} />
           )}
@@ -225,6 +239,7 @@ function FilterRow({ filter, onChange }: { filter: FilterId; onChange: (id: Filt
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
       style={{ marginTop: 20, marginHorizontal: -layout.gutter, flexGrow: 0 }}
       contentContainerStyle={{ paddingHorizontal: layout.gutter, gap: 8 }}>
       {FILTERS.map((item) => {
@@ -251,6 +266,48 @@ function FilterRow({ filter, onChange }: { filter: FilterId; onChange: (id: Filt
         );
       })}
     </ScrollView>
+  );
+}
+
+// A name filter below the rails: type to hide any card whose drink name doesn't
+// match. No autofocus — the keyboard waits for a tap — and a clear X once there
+// is text to wipe.
+function SearchField({ query, onChange }: { query: string; onChange: (text: string) => void }) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 14,
+        backgroundColor: colors.pill,
+        borderRadius: 16,
+        borderCurve: 'continuous',
+        paddingHorizontal: 16,
+        boxShadow: shadows.tile,
+      }}>
+      <Search size={17} color={colors.muted} strokeWidth={2} />
+      <TextInput
+        value={query}
+        onChangeText={onChange}
+        placeholder="Find a drink"
+        placeholderTextColor={colors.muted}
+        accessibilityLabel="Find a drink by name"
+        autoCapitalize="none"
+        autoCorrect={false}
+        returnKeyType="search"
+        style={{ flex: 1, paddingVertical: 13, fontSize: 17, color: colors.ink }}
+      />
+      {query.length > 0 ? (
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel="Clear search"
+          hitSlop={12}
+          onPress={() => onChange('')}>
+          <X size={17} color={colors.muted} strokeWidth={2} />
+        </PressableScale>
+      ) : null}
+    </View>
   );
 }
 
@@ -317,6 +374,29 @@ function FilteredEmpty({ filter }: { filter: FilterId }) {
       </Text>
       <Text style={{ fontSize: 15, lineHeight: 21, color: colors.body, marginTop: 6, textAlign: 'center', maxWidth: 280 }}>
         No {label} on this menu so far.
+      </Text>
+    </View>
+  );
+}
+
+// The search came up empty — a non-blank query that matches no drink name.
+// Takes precedence over FilteredEmpty so it never claims a category is bare.
+function SearchEmpty() {
+  return (
+    <View style={{ alignItems: 'center', marginTop: 48 }}>
+      <Text
+        style={{
+          fontFamily: fonts.hand,
+          fontSize: 26,
+          lineHeight: 30,
+          color: colors.ink,
+          alignSelf: 'stretch',
+          textAlign: 'center',
+        }}>
+        Nothing by that name
+      </Text>
+      <Text style={{ fontSize: 15, lineHeight: 21, color: colors.body, marginTop: 6, textAlign: 'center', maxWidth: 280 }}>
+        No drink on this menu matches your search.
       </Text>
     </View>
   );
