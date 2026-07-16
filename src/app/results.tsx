@@ -290,9 +290,9 @@ function SearchField({ query, onChange }: { query: string; onChange: (text: stri
       <TextInput
         value={query}
         onChangeText={onChange}
-        placeholder="Find a drink"
+        placeholder="Search drink results"
         placeholderTextColor={colors.muted}
-        accessibilityLabel="Find a drink by name"
+        accessibilityLabel="Search drink results by name"
         autoCapitalize="none"
         autoCorrect={false}
         returnKeyType="search"
