@@ -9,7 +9,14 @@ import { handleOptions, json } from '../_shared/cors.ts';
 import { requirePublishableKey } from '../_shared/auth.ts';
 import { clientIp, consumeQuota } from '../_shared/rate-limit.ts';
 import { postOpenRouter, UpstreamError } from '../_shared/openrouter.ts';
-import { buildScanBody, normalizeMenuScan, signMenuScan, type ChatCompletion } from '../_shared/menu.ts';
+import {
+  buildScanBody,
+  normalizeMenuScan,
+  signMenuScan,
+  type ChatCompletion,
+  type SignedMenuScan,
+} from '../_shared/menu.ts';
+import { lookupDrinkImages, publicImageUrl } from '../_shared/image-cache.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -98,8 +105,32 @@ Deno.serve(async (req) => {
     return json(502, { error: 'The menu could not be read. Try a clearer photo.' });
   }
 
-  return json(200, await signMenuScan(normalizeMenuScan(parsed), deviceId));
+  const scan = await signMenuScan(normalizeMenuScan(parsed), deviceId);
+  await attachCachedImages(scan);
+  return json(200, scan);
 });
+
+/**
+ * Attaches `imageUrl` to every drink already in the cache, so the client renders it
+ * without a drink-image call. A lookup failure must never fail the scan — the drinks
+ * simply come back uncached and the client generates them.
+ */
+async function attachCachedImages(scan: SignedMenuScan): Promise<void> {
+  const keys = [...new Set(scan.drinks.map((drink) => drink.imageKey))];
+  let hits: Map<string, string>;
+  try {
+    hits = await lookupDrinkImages(keys);
+  } catch (err) {
+    console.error('drink image cache lookup failed', err);
+    return;
+  }
+  for (const drink of scan.drinks) {
+    const path = hits.get(drink.imageKey);
+    if (path) {
+      drink.imageUrl = publicImageUrl(path);
+    }
+  }
+}
 
 async function runScan(base64Jpeg: string, deadline: number, deviceId: string): Promise<ChatCompletion> {
   const meta = { deviceId, spanName: 'scan-menu' } as const;

@@ -17,6 +17,12 @@ export type ScannedDrink = {
   nutrition: DrinkNutrition;
   /** The backend's HMAC over this drink — drink-image won't render without it. */
   sig: string;
+  /** Cache key for this drink's image, passed back to drink-image. Absent on older backends. */
+  imageKey?: string;
+  /** The backend's HMAC binding imageKey to this drink; pairs with imageKey. Absent on older backends. */
+  keySig?: string;
+  /** Public URL of an already-generated image — present only on a server-side cache hit. */
+  imageUrl?: string;
 };
 
 export type MenuScan = {

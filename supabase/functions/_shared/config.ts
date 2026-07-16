@@ -26,6 +26,8 @@ export const IMAGE_TIMEOUT_MS = 120_000;
 export const MAX_IMAGE_BASE64_CHARS = 10_000_000;
 export const MAX_NAME_CHARS = 120;
 export const MAX_VISUAL_DESCRIPTION_CHARS = 600;
+/** The printed menu description feeds the image cache key; longer text is clamped. */
+export const MAX_MENU_DESCRIPTION_CHARS = 400;
 
 /** Device ids are generated client-side; keep in sync with src/data/device-id.ts. */
 export const DEVICE_ID_PATTERN = /^[a-z0-9-]{8,64}$/;

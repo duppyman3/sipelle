@@ -2,8 +2,14 @@
 // in-app scanner (src/ai/menu-scan.ts). Kept server-side so the prompt and schema
 // can't be lifted from the app bundle.
 
-import { MAX_NAME_CHARS, MAX_VISUAL_DESCRIPTION_CHARS, SIGNATURE_TTL_SECONDS } from '../_shared/config.ts';
-import { signDrink } from '../_shared/signature.ts';
+import {
+  MAX_MENU_DESCRIPTION_CHARS,
+  MAX_NAME_CHARS,
+  MAX_VISUAL_DESCRIPTION_CHARS,
+  SIGNATURE_TTL_SECONDS,
+} from '../_shared/config.ts';
+import { signDrink, signImageKey } from '../_shared/signature.ts';
+import { computeImageKey } from '../_shared/image-cache.ts';
 
 // The single source of the per-scan extraction cap — feeds the prompt, the schema's
 // maxItems, the normalization slice, and the response's drinkLimit. If raising it,
@@ -25,6 +31,8 @@ export type ScannedDrink = {
   name: string;
   category: DrinkCategory;
   visualDescription: string;
+  /** The description printed on the menu, verbatim — feeds the image cache key. Null when none is printed. */
+  menuDescription: string | null;
   price: string | null;
   nutrition: DrinkNutrition;
 };
@@ -36,8 +44,18 @@ export type MenuScan = {
   totalDrinkCount: number | null;
 };
 
-/** A drink carrying our HMAC, which drink-image requires before it will render anything. */
-export type SignedDrink = ScannedDrink & { sig: string };
+/**
+ * A drink carrying our HMAC, which drink-image requires before it will render anything.
+ * `imageKey`/`keySig` let the client request or reuse a cached image; `imageUrl` is
+ * present only when scan-menu already found the image in the cache. `menuDescription`
+ * stays server-side (it only feeds the cache key), so it is omitted from the wire drink.
+ */
+export type SignedDrink = Omit<ScannedDrink, 'menuDescription'> & {
+  sig: string;
+  imageKey: string;
+  keySig: string;
+  imageUrl?: string;
+};
 
 export type SignedMenuScan = {
   venueName: string | null;
@@ -50,7 +68,9 @@ export type SignedMenuScan = {
 const PROMPT =
   `Read this photo of a restaurant drink menu. Extract up to ${SCAN_DRINK_LIMIT} alcoholic drinks, ` +
   'skipping food and plain soft drinks unless the menu is entirely mocktails. Use the ' +
-  'exact printed name for each drink. Estimate nutrition per standard serving. Set ' +
+  'exact printed name for each drink. Copy the drink\'s printed description verbatim ' +
+  'into menu_description, or null when no description is printed for it. Estimate ' +
+  'nutrition per standard serving. Set ' +
   'venue_name only if it is visible on the menu, otherwise null. Sort every drink into ' +
   'exactly one category of shots, beer, exotic, cocktails, or wine — pick the closest ' +
   'fit, and use exotic for anything unusual or hard to place (cider, sake, hard seltzer, ' +
@@ -87,6 +107,11 @@ const MENU_SCHEMA = {
             description:
               'How the drink typically looks when served — glassware, liquid color, garnish, and setting — written so an image model can paint it.',
           },
+          menu_description: {
+            type: ['string', 'null'],
+            description:
+              "The drink's description exactly as printed on the menu, copied verbatim. Null if the menu prints no description for it.",
+          },
           price: {
             type: ['string', 'null'],
             description: 'The price exactly as printed, including any currency symbol. Null if no price is shown.',
@@ -115,7 +140,7 @@ const MENU_SCHEMA = {
             additionalProperties: false,
           },
         },
-        required: ['name', 'category', 'visual_description', 'price', 'nutrition'],
+        required: ['name', 'category', 'visual_description', 'menu_description', 'price', 'nutrition'],
         additionalProperties: false,
       },
     },
@@ -145,6 +170,7 @@ type RawDrink = {
   name?: string | null;
   category?: string | null;
   visual_description?: string | null;
+  menu_description?: string | null;
   price?: string | null;
   nutrition?: RawNutrition | null;
 };
@@ -194,10 +220,14 @@ export function buildScanBody(base64Jpeg: string, includeReasoning: boolean): ob
 export async function signMenuScan(scan: MenuScan, deviceId: string): Promise<SignedMenuScan> {
   const exp = Math.floor(Date.now() / 1000) + SIGNATURE_TTL_SECONDS;
   const drinks = await Promise.all(
-    scan.drinks.map(async (drink) => ({
-      ...drink,
-      sig: await signDrink(drink.name, drink.visualDescription, deviceId, exp),
-    })),
+    scan.drinks.map(async ({ menuDescription, ...drink }) => {
+      const imageKey = await computeImageKey(drink.name, menuDescription);
+      const [sig, keySig] = await Promise.all([
+        signDrink(drink.name, drink.visualDescription, deviceId, exp),
+        signImageKey(imageKey, drink.name, drink.visualDescription, deviceId, exp),
+      ]);
+      return { ...drink, sig, imageKey, keySig };
+    }),
   );
   return { venueName: scan.venueName, drinks, totalDrinkCount: scan.totalDrinkCount, drinkLimit: SCAN_DRINK_LIMIT };
 }
@@ -229,10 +259,13 @@ function normalizeDrink(raw: RawDrink): ScannedDrink | null {
     typeof raw.visual_description === 'string'
       ? raw.visual_description.trim().slice(0, MAX_VISUAL_DESCRIPTION_CHARS)
       : '';
+  const trimmedDescription =
+    typeof raw.menu_description === 'string' ? raw.menu_description.trim().slice(0, MAX_MENU_DESCRIPTION_CHARS) : '';
   return {
     name,
     category: normalizeCategory(raw.category),
     visualDescription,
+    menuDescription: trimmedDescription.length > 0 ? trimmedDescription : null,
     price: typeof raw.price === 'string' && raw.price.trim().length > 0 ? raw.price.trim() : null,
     nutrition: normalizeNutrition(raw.nutrition),
   };

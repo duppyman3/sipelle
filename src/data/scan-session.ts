@@ -24,6 +24,8 @@ export type SessionDrink = {
   price: string | null;
   nutrition: DrinkNutrition;
   sig: string;
+  imageKey?: string;
+  keySig?: string;
   imageStatus: DrinkImageStatus;
   imageUri: string | null;
 };
@@ -87,6 +89,16 @@ function drinkKey(name: string): string {
   return name.toLowerCase().replace(/\s+/g, ' ');
 }
 
+// Store an image under its name key, evicting the oldest entries past the cap.
+function cacheImage(key: string, uri: string): void {
+  while (imageCache.size >= IMAGE_CACHE_MAX) {
+    const oldest = imageCache.keys().next().value;
+    if (oldest === undefined) break;
+    imageCache.delete(oldest);
+  }
+  imageCache.set(key, uri);
+}
+
 // The image pipeline is keyed by drink id and carries no scan token. The
 // per-drink 'queued' guard is what replaces the old tokens: enqueueing the same
 // id twice simply no-ops. A fixed pool of IMAGE_CONCURRENCY drain loops caps
@@ -99,12 +111,7 @@ async function generateOne(id: string): Promise<void> {
   updateDrink(id, { imageStatus: 'generating' });
   try {
     const imageUri = await generateDrinkImage(drink);
-    while (imageCache.size >= IMAGE_CACHE_MAX) {
-      const oldest = imageCache.keys().next().value;
-      if (oldest === undefined) break;
-      imageCache.delete(oldest);
-    }
-    imageCache.set(drinkKey(drink.name), imageUri);
+    cacheImage(drinkKey(drink.name), imageUri);
     updateDrink(id, { imageStatus: 'done', imageUri });
   } catch (error) {
     track('drink_image_failed', { status: error instanceof AiError ? error.status : -1 });
@@ -197,12 +204,19 @@ async function run(): Promise<void> {
     const key = drinkKey(drink.name);
     if (!seen.has(key)) {
       seen.add(key);
-      const cached = imageCache.get(key);
+      // A server-side cache hit arrives with its image URL already resolved —
+      // land it ready (never enqueued) and seed the session cache so the
+      // existing name-keyed reuse keeps working. Otherwise fall back to that
+      // session cache, and queue a generation only when neither has an image.
+      if (drink.imageUrl) {
+        cacheImage(key, drink.imageUrl);
+      }
+      const ready = drink.imageUrl ?? imageCache.get(key) ?? null;
       fresh.push({
         ...drink,
         id: `drink-${++drinkSeq}`,
-        imageStatus: cached ? 'done' : 'queued',
-        imageUri: cached ?? null,
+        imageStatus: ready ? 'done' : 'queued',
+        imageUri: ready,
       });
     }
   }

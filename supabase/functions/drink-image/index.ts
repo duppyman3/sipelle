@@ -9,7 +9,10 @@ import { handleOptions, json } from '../_shared/cors.ts';
 import { requirePublishableKey } from '../_shared/auth.ts';
 import { clientIp, consumeQuota } from '../_shared/rate-limit.ts';
 import { postOpenRouter, UpstreamError } from '../_shared/openrouter.ts';
-import { verifyDrink } from '../_shared/signature.ts';
+import { verifyDrink, verifyImageKey } from '../_shared/signature.ts';
+import { lookupDrinkImages, publicImageUrl, storeDrinkImage } from '../_shared/image-cache.ts';
+
+const IMAGE_KEY_PATTERN = /^[0-9a-f]{64}$/;
 
 type ImageResponse = {
   data?: { b64_json?: string; media_type?: string }[];
@@ -44,7 +47,7 @@ Deno.serve(async (req) => {
     return json(400, { error: 'Invalid request.' });
   }
 
-  const { deviceId, name, visualDescription, sig } = payload as Record<string, unknown>;
+  const { deviceId, name, visualDescription, sig, imageKey, keySig } = payload as Record<string, unknown>;
   if (
     typeof deviceId !== 'string' ||
     !DEVICE_ID_PATTERN.test(deviceId) ||
@@ -57,6 +60,17 @@ Deno.serve(async (req) => {
   ) {
     return json(400, { error: 'Invalid request.' });
   }
+
+  // Cache fields are optional (old apps omit them) but must arrive together and well-formed.
+  const cacheRequested = imageKey !== undefined || keySig !== undefined;
+  if (
+    cacheRequested &&
+    (typeof imageKey !== 'string' || !IMAGE_KEY_PATTERN.test(imageKey) || typeof keySig !== 'string')
+  ) {
+    return json(400, { error: 'Invalid request.' });
+  }
+  const cacheKey = cacheRequested ? (imageKey as string) : null;
+  const cacheKeySig = cacheRequested ? (keySig as string) : null;
 
   if (!Deno.env.get('OPENROUTER_API_KEY') || !Deno.env.get('DRINK_SIGNING_SECRET')) {
     return json(500, { error: 'The AI service is not configured yet.' });
@@ -71,10 +85,30 @@ Deno.serve(async (req) => {
     return json(401, { error: 'Invalid request.' });
   }
 
+  // The keySig binds this cache key to this exact drink text — without it a caller could
+  // fetch or store one drink's image under another's key. Same generic error as a bad sig.
+  if (cacheKey !== null && !(await verifyImageKey(cacheKey, name, visualDescription, deviceId, cacheKeySig!))) {
+    return json(401, { error: 'Invalid request.' });
+  }
+
   // No trustworthy IP means no IP quota, so refuse rather than let the caller past it.
   const ip = clientIp(req);
   if (ip === null) {
     return json(400, { error: 'Invalid request.' });
+  }
+
+  // A cache hit is free — checked before consumeQuota so the daily caps count only real
+  // generations. Reuses the lookup RPC, which also records the use. A lookup failure just
+  // falls through to generating.
+  if (cacheKey !== null) {
+    try {
+      const path = (await lookupDrinkImages([cacheKey])).get(cacheKey);
+      if (path) {
+        return json(200, { image: publicImageUrl(path) });
+      }
+    } catch (err) {
+      console.error('drink image cache lookup failed', err);
+    }
   }
 
   let quota;
@@ -108,8 +142,30 @@ Deno.serve(async (req) => {
   if (!image?.b64_json) {
     return json(502, { error: 'No image was returned.' });
   }
+
+  // Store the generation so the next scanner of this drink reuses it. If caching fails we
+  // still return the image inline exactly as an old client would receive it — the cache
+  // simply misses again next time.
+  if (cacheKey !== null) {
+    try {
+      await storeDrinkImage(cacheKey, decodeBase64(image.b64_json), { name, visualDescription });
+      return json(200, { image: publicImageUrl(`${cacheKey}.jpg`) });
+    } catch (err) {
+      console.error('drink image cache store failed', err);
+    }
+  }
   return json(200, { image: `data:${image.media_type ?? 'image/jpeg'};base64,${image.b64_json}` });
 });
+
+/** Base64 → bytes. atob yields one byte per char (0–255), correct for binary JPEG data. */
+function decodeBase64(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
 
 async function generateImage(prompt: string, deviceId: string): Promise<ImageResponse> {
   const meta = { deviceId, spanName: 'drink-image' } as const;

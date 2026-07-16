@@ -28,6 +28,22 @@ function canonical(name: string, visualDescription: string, deviceId: string, ex
   return new TextEncoder().encode(JSON.stringify([name, visualDescription, deviceId, exp]));
 }
 
+/**
+ * The image-cache token binds an image_key to the exact drink text it was derived from.
+ * The 'imgkey' domain tag keeps it from colliding with a drink sig, and including
+ * name+visualDescription means a verified keySig guarantees this key belongs to this
+ * drink — so a caller can't fetch or store one drink's image under another's key.
+ */
+function canonicalImageKey(
+  imageKey: string,
+  name: string,
+  visualDescription: string,
+  deviceId: string,
+  exp: number,
+): Uint8Array {
+  return new TextEncoder().encode(JSON.stringify(['imgkey', imageKey, name, visualDescription, deviceId, exp]));
+}
+
 /** `v1.<expiryEpochSeconds>.<hmac>` — the expiry is signed, so a caller can't extend it. */
 const SIGNATURE_PATTERN = /^v1\.(\d{1,10})\.([0-9a-f]{64})$/;
 
@@ -80,5 +96,45 @@ export async function verifyDrink(
     await getKey(),
     fromHex(match[2]),
     canonical(name, visualDescription, deviceId, exp),
+  );
+}
+
+/** Signs a cache key bound to its drink. Same token format as signDrink. */
+export async function signImageKey(
+  imageKey: string,
+  name: string,
+  visualDescription: string,
+  deviceId: string,
+  exp: number,
+): Promise<string> {
+  const mac = await crypto.subtle.sign(
+    'HMAC',
+    await getKey(),
+    canonicalImageKey(imageKey, name, visualDescription, deviceId, exp),
+  );
+  return `v1.${exp}.${toHex(mac)}`;
+}
+
+/** True when `sig` is our unexpired keySig over this key for this exact drink and device. */
+export async function verifyImageKey(
+  imageKey: string,
+  name: string,
+  visualDescription: string,
+  deviceId: string,
+  sig: string,
+): Promise<boolean> {
+  const match = SIGNATURE_PATTERN.exec(sig);
+  if (match === null) {
+    return false;
+  }
+  const exp = Number(match[1]);
+  if (exp * 1000 <= Date.now()) {
+    return false;
+  }
+  return await crypto.subtle.verify(
+    'HMAC',
+    await getKey(),
+    fromHex(match[2]),
+    canonicalImageKey(imageKey, name, visualDescription, deviceId, exp),
   );
 }
