@@ -12,6 +12,7 @@ import { postOpenRouter, UpstreamError } from '../_shared/openrouter.ts';
 import {
   buildScanBody,
   normalizeMenuScan,
+  SCAN_FALLBACK_MODEL,
   signMenuScan,
   type ChatCompletion,
   type SignedMenuScan,
@@ -135,21 +136,37 @@ async function attachCachedImages(scan: SignedMenuScan): Promise<void> {
 async function runScan(base64Jpeg: string, deadline: number, deviceId: string): Promise<ChatCompletion> {
   const meta = { deviceId, spanName: 'scan-menu' } as const;
   try {
-    return await postOpenRouter<ChatCompletion>(
-      '/chat/completions',
-      buildScanBody(base64Jpeg, true),
-      SCAN_TIMEOUT_MS,
-      meta,
-    );
-  } catch (err) {
-    // Some providers reject the reasoning parameter (400 invalid_request, or 404
-    // when require_parameters routing finds no matching endpoint). Retry once without
-    // it, but only while enough of the response deadline remains.
-    const remaining = deadline - Date.now();
-    if (err instanceof UpstreamError && (err.status === 400 || err.status === 404) && remaining > 10_000) {
+    try {
       return await postOpenRouter<ChatCompletion>(
         '/chat/completions',
-        buildScanBody(base64Jpeg, false),
+        buildScanBody(base64Jpeg, true),
+        SCAN_TIMEOUT_MS,
+        meta,
+      );
+    } catch (err) {
+      // Some providers reject the reasoning parameter (400 invalid_request, or 404
+      // when require_parameters routing finds no matching endpoint). Retry once without
+      // it, but only while enough of the response deadline remains.
+      const remaining = deadline - Date.now();
+      if (err instanceof UpstreamError && (err.status === 400 || err.status === 404) && remaining > 10_000) {
+        return await postOpenRouter<ChatCompletion>(
+          '/chat/completions',
+          buildScanBody(base64Jpeg, false),
+          Math.min(SCAN_TIMEOUT_MS, remaining),
+          meta,
+        );
+      }
+      throw err;
+    }
+  } catch (err) {
+    // Any upstream failure escaping the attempts above — an OpenAI outage, or the primary
+    // model being removed (a 404 that survives the no-reasoning retry) — degrades to one
+    // attempt on the non-OpenAI fallback, while enough of the deadline remains.
+    const remaining = deadline - Date.now();
+    if (err instanceof UpstreamError && remaining > 10_000) {
+      return await postOpenRouter<ChatCompletion>(
+        '/chat/completions',
+        buildScanBody(base64Jpeg, false, SCAN_FALLBACK_MODEL),
         Math.min(SCAN_TIMEOUT_MS, remaining),
         meta,
       );

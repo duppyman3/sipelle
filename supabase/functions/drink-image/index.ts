@@ -126,8 +126,9 @@ Deno.serve(async (req) => {
     'Served look, soft natural light, shallow depth of field, clean neutral background, photorealistic, appetizing.';
 
   let response: ImageResponse;
+  let fromFallback: boolean;
   try {
-    response = await generateImage(prompt, deviceId);
+    ({ response, fromFallback } = await generateImage(prompt, deviceId));
   } catch (err) {
     // Upstream text can name models, providers, and our billing state — log it, don't relay it.
     if (err instanceof UpstreamError) {
@@ -145,8 +146,9 @@ Deno.serve(async (req) => {
 
   // Store the generation so the next scanner of this drink reuses it. If caching fails we
   // still return the image inline exactly as an old client would receive it — the cache
-  // simply misses again next time.
-  if (cacheKey !== null) {
+  // simply misses again next time. Fallback (FLUX) output is never cached — the shared
+  // cache stays all-OpenAI JPEG; it serves inline like a cache-store failure would.
+  if (cacheKey !== null && !fromFallback) {
     try {
       await storeDrinkImage(cacheKey, decodeBase64(image.b64_json), { name, visualDescription });
       return json(200, { image: publicImageUrl(`${cacheKey}.jpg`) });
@@ -167,39 +169,70 @@ function decodeBase64(b64: string): Uint8Array {
   return bytes;
 }
 
-async function generateImage(prompt: string, deviceId: string): Promise<ImageResponse> {
+async function generateImage(
+  prompt: string,
+  deviceId: string,
+): Promise<{ response: ImageResponse; fromFallback: boolean }> {
   const meta = { deviceId, spanName: 'drink-image' } as const;
   try {
-    return await postOpenRouter<ImageResponse>(
-      '/images',
-      {
-        model: 'openai/gpt-5-image-mini',
-        prompt,
-        n: 1,
-        size: '1024x1024',
-        quality: 'low',
-        output_format: 'jpeg',
-        output_compression: 70,
-      },
-      IMAGE_TIMEOUT_MS,
-      meta,
-    );
+    try {
+      return {
+        response: await postOpenRouter<ImageResponse>(
+          '/images',
+          {
+            model: 'openai/gpt-5-image-mini',
+            prompt,
+            n: 1,
+            size: '1024x1024',
+            quality: 'low',
+            output_format: 'jpeg',
+            output_compression: 70,
+          },
+          IMAGE_TIMEOUT_MS,
+          meta,
+        ),
+        fromFallback: false,
+      };
+    } catch (err) {
+      // `size` and `output_format` are not advertised for this model and may be
+      // rejected (400 invalid_request). Retry once with only the advertised params.
+      if (err instanceof UpstreamError && err.status === 400) {
+        return {
+          response: await postOpenRouter<ImageResponse>(
+            '/images',
+            {
+              model: 'openai/gpt-5-image-mini',
+              prompt,
+              n: 1,
+              quality: 'low',
+              output_compression: 70,
+            },
+            IMAGE_TIMEOUT_MS,
+            meta,
+          ),
+          fromFallback: false,
+        };
+      }
+      throw err;
+    }
   } catch (err) {
-    // `size` and `output_format` are not advertised for this model and may be
-    // rejected (400 invalid_request). Retry once with only the advertised params.
-    if (err instanceof UpstreamError && err.status === 400) {
-      return await postOpenRouter<ImageResponse>(
-        '/images',
-        {
-          model: 'openai/gpt-5-image-mini',
-          prompt,
-          n: 1,
-          quality: 'low',
-          output_compression: 70,
-        },
-        IMAGE_TIMEOUT_MS,
-        meta,
-      );
+    // Fires on any upstream failure so an OpenAI outage degrades to a FLUX retry. FLUX takes
+    // no size params — its default is today's 1024×1024 square — and we force jpeg output.
+    if (err instanceof UpstreamError) {
+      return {
+        response: await postOpenRouter<ImageResponse>(
+          '/images',
+          {
+            model: 'black-forest-labs/flux.2-klein-4b',
+            prompt,
+            n: 1,
+            output_format: 'jpeg',
+          },
+          IMAGE_TIMEOUT_MS,
+          meta,
+        ),
+        fromFallback: true,
+      };
     }
     throw err;
   }

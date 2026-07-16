@@ -181,9 +181,13 @@ type RawMenuScan = {
   total_drink_count?: number | null;
 };
 
-export function buildScanBody(base64Jpeg: string, includeReasoning: boolean): object {
+// Non-OpenAI fallback for when the primary model's upstream fails. Every OpenRouter
+// provider serving it supports the structured-output/reasoning params require_parameters demands.
+export const SCAN_FALLBACK_MODEL = 'google/gemini-2.5-flash';
+
+export function buildScanBody(base64Jpeg: string, includeReasoning: boolean, model = 'openai/gpt-5.4-mini'): object {
   const body: Record<string, unknown> = {
-    model: 'openai/gpt-5.4-mini',
+    model,
     provider: { require_parameters: true },
     response_format: {
       type: 'json_schema',
