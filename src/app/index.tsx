@@ -4,12 +4,12 @@ import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { colors } from '@/constants/theme';
-import { getSavedFirstName } from '@/data/user-name';
+import { getLaunchRoute } from '@/data/launch-route';
 
 export default function Splash() {
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.replace(getSavedFirstName() ? '/home' : '/welcome');
+      router.replace(getLaunchRoute());
     }, 2000);
     return () => clearTimeout(timer);
   }, []);

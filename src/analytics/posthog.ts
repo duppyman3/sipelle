@@ -1,6 +1,7 @@
 import PostHog from 'posthog-react-native';
 
 import { getDeviceId } from '@/data/device-id';
+import { getLegalAgeConfirmed } from '@/data/legal-age';
 
 // Public-by-design config, inlined by Expo at build time — must stay static
 // dot-notation reads (same rule as src/ai/backend.ts).
@@ -19,6 +20,11 @@ let initialized = false;
 // Lazy: callers are only effects/event handlers, so nothing constructs or
 // networks during static-export renders in Node. Missing key => permanent no-op.
 function getClient(): PostHog | null {
+  // Do not initialize the SDK at all before the user confirms legal age.
+  // Leave initialized false so confirmation can initialize it later.
+  if (!getLegalAgeConfirmed()) {
+    return null;
+  }
   if (initialized) {
     return client;
   }

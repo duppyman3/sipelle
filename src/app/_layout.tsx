@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 
 import { trackScreen } from '@/analytics/posthog';
 import { colors } from '@/constants/theme';
+import { useLegalAgeConfirmed } from '@/data/legal-age';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -27,10 +28,15 @@ export default function RootLayout() {
   }, [fontsLoaded, fontError]);
 
   const pathname = usePathname();
+  const legalAgeConfirmed = useLegalAgeConfirmed();
 
   useEffect(() => {
-    trackScreen(pathname);
-  }, [pathname]);
+    // The age gate is deliberately analytics-free. Once confirmed, the
+    // destination screen is the first screen view captured for this install.
+    if (legalAgeConfirmed && pathname !== '/age-gate') {
+      trackScreen(pathname);
+    }
+  }, [legalAgeConfirmed, pathname]);
 
   if (!fontsLoaded && !fontError) {
     return null;
@@ -43,10 +49,13 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="index" options={{ contentStyle: { backgroundColor: colors.washSplash } }} />
-        <Stack.Screen name="welcome" options={{ contentStyle: { backgroundColor: colors.washMint } }} />
-        <Stack.Screen name="home" options={{ contentStyle: { backgroundColor: colors.tile } }} />
-        <Stack.Screen name="results" options={{ contentStyle: { backgroundColor: colors.washCream } }} />
-        <Stack.Screen name="paywall" options={{ contentStyle: { backgroundColor: colors.washCream } }} />
+        <Stack.Screen name="age-gate" options={{ contentStyle: { backgroundColor: colors.washMint } }} />
+        <Stack.Protected guard={legalAgeConfirmed}>
+          <Stack.Screen name="welcome" options={{ contentStyle: { backgroundColor: colors.washMint } }} />
+          <Stack.Screen name="home" options={{ contentStyle: { backgroundColor: colors.tile } }} />
+          <Stack.Screen name="results" options={{ contentStyle: { backgroundColor: colors.washCream } }} />
+          <Stack.Screen name="paywall" options={{ contentStyle: { backgroundColor: colors.washCream } }} />
+        </Stack.Protected>
       </Stack>
     </ThemeProvider>
   );

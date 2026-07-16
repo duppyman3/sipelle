@@ -12,6 +12,7 @@ import { SystemDownCard } from '@/components/system-down-card';
 import { enterSoft } from '@/constants/motion';
 import { colors, fonts, homeGradient, layout, shadows } from '@/constants/theme';
 import { fetchAppStatus, type AppStatus } from '@/data/app-status';
+import { clearLegalAgeForTesting } from '@/data/legal-age';
 import { CATEGORIES } from '@/data/menu';
 import { clearPremiumForTesting } from '@/data/premium';
 import { scanMenu } from '@/data/scan-menu';
@@ -122,16 +123,28 @@ export default function Home() {
               </PressableScale>
             </>
           )}
+
+          <Text
+            style={{
+              marginTop: 30,
+              color: colors.muted,
+              fontSize: 12,
+              lineHeight: 18,
+              textAlign: 'center',
+            }}>
+            Enjoy responsibly. Never drink and drive.
+          </Text>
         </Animated.View>
       </ScrollView>
-      {/* Testing-only: clears the saved name and premium, then restarts the first-run flow. */}
+      {/* Testing-only: clears local onboarding state, then restarts the first-run flow. */}
       {__DEV__ ? (
         <PressableScale
           accessibilityRole="button"
-          accessibilityLabel="Reset saved name"
+          accessibilityLabel="Reset onboarding"
           onPress={() => {
             clearFirstName();
             clearPremiumForTesting();
+            clearLegalAgeForTesting();
             router.replace('/');
           }}
           style={{
