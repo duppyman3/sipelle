@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Lock, RotateCcw } from 'lucide-react-native';
+import { ChevronDown, Lock, RotateCcw } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { Text, View, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
@@ -9,7 +9,7 @@ import Svg, { Ellipse } from 'react-native-svg';
 import { type DrinkNutrition } from '@/ai/menu-scan';
 import { track } from '@/analytics/posthog';
 import { PressableScale } from '@/components/pressable-scale';
-import { softEasing } from '@/constants/motion';
+import { expandTiming, expandTransition, softEasing } from '@/constants/motion';
 import { colors, fonts, shadows } from '@/constants/theme';
 import { useShowNutrition } from '@/data/nutrition-pref';
 import { PREMIUM_AVAILABLE, useIsPremium } from '@/data/premium';
@@ -36,9 +36,22 @@ const TILE_BASE: ViewStyle = {
   boxShadow: shadows.tile,
 };
 
-export function ScannedDrinkCard({ drink }: { drink: SessionDrink }) {
+export function ScannedDrinkCard({
+  drink,
+  expanded,
+  onToggle,
+}: {
+  drink: SessionDrink;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <View
+    <PressableScale
+      // Pressable defaults accessible=true, which flattens the subtree on iOS and
+      // hides the nested lock/retry controls from VoiceOver.
+      accessible={false}
+      onPress={onToggle}
+      layout={expandTransition}
       style={{
         flexDirection: 'row',
         gap: 14,
@@ -47,6 +60,7 @@ export function ScannedDrinkCard({ drink }: { drink: SessionDrink }) {
         borderRadius: 28,
         borderCurve: 'continuous',
         padding: 16,
+        overflow: 'hidden',
         boxShadow: shadows.card,
       }}>
       <DrinkTile drink={drink} />
@@ -77,11 +91,38 @@ export function ScannedDrinkCard({ drink }: { drink: SessionDrink }) {
           ) : null}
         </View>
         <NutritionLine nutrition={drink.nutrition} />
-        <Text numberOfLines={3} style={{ fontSize: 14, lineHeight: 19, color: colors.body }}>
+        <Text
+          numberOfLines={expanded ? undefined : 3}
+          style={{ fontSize: 14, lineHeight: 19, color: colors.body }}>
           {drink.visualDescription}
         </Text>
+        <ExpandChevron expanded={expanded} onToggle={onToggle} />
       </View>
-    </View>
+    </PressableScale>
+  );
+}
+
+function ExpandChevron({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) {
+  const turn = useSharedValue(expanded ? 1 : 0);
+  useEffect(() => {
+    turn.set(withTiming(expanded ? 1 : 0, expandTiming));
+  }, [turn, expanded]);
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${turn.get() * 180}deg` }],
+  }));
+
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityState={{ expanded }}
+      accessibilityLabel={expanded ? 'Hide full description' : 'Show full description'}
+      hitSlop={12}
+      onPress={onToggle}
+      style={{ alignSelf: 'flex-end' }}>
+      <Animated.View style={chevronStyle}>
+        <ChevronDown size={16} color={colors.muted} strokeWidth={2} />
+      </Animated.View>
+    </PressableScale>
   );
 }
 

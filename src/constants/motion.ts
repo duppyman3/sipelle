@@ -1,4 +1,4 @@
-import { Easing, FadeInDown } from 'react-native-reanimated';
+import { Easing, FadeInDown, LinearTransition } from 'react-native-reanimated';
 
 // Builders live at module scope so React Compiler memoization never
 // recreates them per render.
@@ -15,3 +15,8 @@ const riseBy14: { opacity: number; transform: [{ translateY: number }] } = {
 export const enterSoft = FadeInDown.duration(500).easing(softEasing).withInitialValues(riseBy14);
 
 export const pressTiming = { duration: 120, easing: softEasing };
+
+// Tap-to-expand card accordion: 260ms soft-eased chevron rotation and card
+// height layout transition (both module scope, per the rationale above).
+export const expandTiming = { duration: 260, easing: softEasing };
+export const expandTransition = LinearTransition.duration(260).easing(softEasing);

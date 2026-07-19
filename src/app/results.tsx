@@ -11,7 +11,7 @@ import { PressableScale } from '@/components/pressable-scale';
 import { ResultsWash } from '@/components/results-wash';
 import { ScanCapModal } from '@/components/scan-cap-modal';
 import { ScannedDrinkCard } from '@/components/scanned-drink-card';
-import { enterSoft, softEasing } from '@/constants/motion';
+import { enterSoft, expandTransition, softEasing } from '@/constants/motion';
 import { colors, fonts, layout, shadows } from '@/constants/theme';
 import { CATEGORIES, DRINK_CATEGORY_IDS, RESULTS_CATEGORY_ORDER, type DrinkCategory } from '@/data/menu';
 import { setShowNutrition, useShowNutrition } from '@/data/nutrition-pref';
@@ -155,6 +155,7 @@ function ReadyResults({ session, initialFilter }: { session: ScanSession; initia
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState(initialFilter);
   const [query, setQuery] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const search = searchKey(query);
   // session.drinks is already grouped by RESULTS_CATEGORY_ORDER at store time.
   const byCategory = filter === 'all' ? session.drinks : session.drinks.filter((drink) => drink.category === filter);
@@ -208,7 +209,12 @@ function ReadyResults({ session, initialFilter }: { session: ScanSession; initia
           {drinks.length > 0 ? (
             <View style={{ gap: 20, marginTop: 24 }}>
               {drinks.map((drink) => (
-                <ScannedDrinkCard key={drink.id} drink={drink} />
+                <ScannedDrinkCard
+                  key={drink.id}
+                  drink={drink}
+                  expanded={drink.id === expandedId}
+                  onToggle={() => setExpandedId((current) => (current === drink.id ? null : drink.id))}
+                />
               ))}
             </View>
           ) : search !== '' ? (
@@ -412,6 +418,7 @@ function ListFooter() {
       accessibilityRole="button"
       accessibilityLabel="Scan another menu"
       onPress={scanMenu}
+      layout={expandTransition}
       style={{
         marginTop: 28,
         alignSelf: 'center',

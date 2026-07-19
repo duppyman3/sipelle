@@ -1,5 +1,5 @@
-import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { Pressable, type PressableProps, type StyleProp, type ViewProps, type ViewStyle } from 'react-native';
+import Animated, { type AnimatedProps, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { pressTiming } from '@/constants/motion';
 
@@ -9,6 +9,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 // so it is narrowed to a plain view style.
 type PressableScaleProps = Omit<PressableProps, 'style'> & {
   style?: StyleProp<ViewStyle>;
+  layout?: AnimatedProps<ViewProps>['layout'];
 };
 
 /**
