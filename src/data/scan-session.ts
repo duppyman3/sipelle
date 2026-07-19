@@ -21,6 +21,8 @@ export type SessionDrink = {
   name: string;
   category: DrinkCategory;
   visualDescription: string;
+  /** Card display text carried from the scan; absent on older backends. */
+  description?: string | null;
   price: string | null;
   nutrition: DrinkNutrition;
   sig: string;

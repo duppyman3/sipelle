@@ -5,6 +5,7 @@
 import {
   MAX_MENU_DESCRIPTION_CHARS,
   MAX_NAME_CHARS,
+  MAX_TYPICAL_DESCRIPTION_CHARS,
   MAX_VISUAL_DESCRIPTION_CHARS,
   SIGNATURE_TTL_SECONDS,
 } from '../_shared/config.ts';
@@ -13,7 +14,7 @@ import { computeImageKey } from '../_shared/image-cache.ts';
 
 // The single source of the per-scan extraction cap — feeds the prompt, the schema's
 // maxItems, the normalization slice, and the response's drinkLimit. If raising it,
-// add an explicit max_tokens to buildScanBody so the longer list has output headroom.
+// also revisit the explicit max_tokens in buildScanBody so the longer list keeps output headroom.
 export const SCAN_DRINK_LIMIT = 30;
 
 // keep in sync with src/data/menu.ts DRINK_CATEGORY_IDS
@@ -33,6 +34,8 @@ export type ScannedDrink = {
   visualDescription: string;
   /** The description printed on the menu, verbatim — feeds the image cache key. Null when none is printed. */
   menuDescription: string | null;
+  /** Card display text: the printed description when the menu has one, else the AI-written typical blurb. */
+  description: string | null;
   price: string | null;
   nutrition: DrinkNutrition;
 };
@@ -48,7 +51,8 @@ export type MenuScan = {
  * A drink carrying our HMAC, which drink-image requires before it will render anything.
  * `imageKey`/`keySig` let the client request or reuse a cached image; `imageUrl` is
  * present only when scan-menu already found the image in the cache. `menuDescription`
- * stays server-side (it only feeds the cache key), so it is omitted from the wire drink.
+ * stays server-side (it only feeds the cache key), so it is omitted from the wire drink;
+ * the display-only `description` rides the wire in its place as the card's display text.
  */
 export type SignedDrink = Omit<ScannedDrink, 'menuDescription'> & {
   sig: string;
@@ -69,7 +73,9 @@ const PROMPT =
   `Read this photo of a restaurant drink menu. Extract up to ${SCAN_DRINK_LIMIT} alcoholic drinks, ` +
   'skipping food and plain soft drinks unless the menu is entirely mocktails. Use the ' +
   'exact printed name for each drink. Copy the drink\'s printed description verbatim ' +
-  'into menu_description, or null when no description is printed for it. Estimate ' +
+  'into menu_description, or null when no description is printed for it. Separately, ' +
+  'write one or two short sentences into typical_description for every drink, describing ' +
+  'its typical ingredients and character the way a menu blurb would. Estimate ' +
   'nutrition per standard serving. Set ' +
   'venue_name only if it is visible on the menu, otherwise null. Sort every drink into ' +
   'exactly one category of shots, beer, exotic, cocktails, or wine — pick the closest ' +
@@ -112,6 +118,13 @@ const MENU_SCHEMA = {
             description:
               "The drink's description exactly as printed on the menu, copied verbatim. Null if the menu prints no description for it.",
           },
+          typical_description: {
+            type: 'string',
+            description:
+              "One or two short consumer-facing sentences on the drink's typical ingredients and " +
+              'character, written like a menu blurb. Plain menu prose, never an appearance or ' +
+              'image-generation prompt.',
+          },
           price: {
             type: ['string', 'null'],
             description: 'The price exactly as printed, including any currency symbol. Null if no price is shown.',
@@ -140,7 +153,7 @@ const MENU_SCHEMA = {
             additionalProperties: false,
           },
         },
-        required: ['name', 'category', 'visual_description', 'menu_description', 'price', 'nutrition'],
+        required: ['name', 'category', 'visual_description', 'menu_description', 'typical_description', 'price', 'nutrition'],
         additionalProperties: false,
       },
     },
@@ -171,6 +184,7 @@ type RawDrink = {
   category?: string | null;
   visual_description?: string | null;
   menu_description?: string | null;
+  typical_description?: string | null;
   price?: string | null;
   nutrition?: RawNutrition | null;
 };
@@ -189,6 +203,10 @@ export function buildScanBody(base64Jpeg: string, includeReasoning: boolean, mod
   const body: Record<string, unknown> = {
     model,
     provider: { require_parameters: true },
+    // Output headroom: worst case ~30 drinks of JSON plus reasoning/thinking tokens, which
+    // count toward the completion cap on both the primary and fallback models. Far below
+    // both models' output ceilings; a truncated response 502s at JSON.parse.
+    max_tokens: 30_000,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -265,11 +283,17 @@ function normalizeDrink(raw: RawDrink): ScannedDrink | null {
       : '';
   const trimmedDescription =
     typeof raw.menu_description === 'string' ? raw.menu_description.trim().slice(0, MAX_MENU_DESCRIPTION_CHARS) : '';
+  const menuDescription = trimmedDescription.length > 0 ? trimmedDescription : null;
+  const trimmedTypical =
+    typeof raw.typical_description === 'string'
+      ? raw.typical_description.trim().slice(0, MAX_TYPICAL_DESCRIPTION_CHARS)
+      : '';
   return {
     name,
     category: normalizeCategory(raw.category),
     visualDescription,
-    menuDescription: trimmedDescription.length > 0 ? trimmedDescription : null,
+    menuDescription,
+    description: menuDescription ?? (trimmedTypical.length > 0 ? trimmedTypical : null),
     price: typeof raw.price === 'string' && raw.price.trim().length > 0 ? raw.price.trim() : null,
     nutrition: normalizeNutrition(raw.nutrition),
   };

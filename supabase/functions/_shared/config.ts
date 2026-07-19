@@ -28,6 +28,8 @@ export const MAX_NAME_CHARS = 120;
 export const MAX_VISUAL_DESCRIPTION_CHARS = 600;
 /** The printed menu description feeds the image cache key; longer text is clamped. */
 export const MAX_MENU_DESCRIPTION_CHARS = 400;
+/** The AI-written fallback display description; display-only, clamped like the printed one. */
+export const MAX_TYPICAL_DESCRIPTION_CHARS = 400;
 
 /** Device ids are generated client-side; keep in sync with src/data/device-id.ts. */
 export const DEVICE_ID_PATTERN = /^[a-z0-9-]{8,64}$/;

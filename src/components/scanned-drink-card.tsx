@@ -91,12 +91,17 @@ export function ScannedDrinkCard({
           ) : null}
         </View>
         <NutritionLine nutrition={drink.nutrition} />
-        <Text
-          numberOfLines={expanded ? undefined : 3}
-          style={{ fontSize: 14, lineHeight: 19, color: colors.body }}>
-          {drink.visualDescription}
-        </Text>
-        <ExpandChevron expanded={expanded} onToggle={onToggle} />
+        {/* Show drink.description only — never the image-generation visualDescription. */}
+        {drink.description ? (
+          <>
+            <Text
+              numberOfLines={expanded ? undefined : 3}
+              style={{ fontSize: 14, lineHeight: 19, color: colors.body }}>
+              {drink.description}
+            </Text>
+            <ExpandChevron expanded={expanded} onToggle={onToggle} />
+          </>
+        ) : null}
       </View>
     </PressableScale>
   );
