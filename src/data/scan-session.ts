@@ -23,6 +23,8 @@ export type SessionDrink = {
   visualDescription: string;
   /** Card display text carried from the scan; absent on older backends. */
   description?: string | null;
+  /** One-sentence taste summary, shown only when expanded; absent on older backends. */
+  tasteNote?: string | null;
   price: string | null;
   nutrition: DrinkNutrition;
   sig: string;

@@ -5,6 +5,7 @@
 import {
   MAX_MENU_DESCRIPTION_CHARS,
   MAX_NAME_CHARS,
+  MAX_TASTE_NOTE_CHARS,
   MAX_TYPICAL_DESCRIPTION_CHARS,
   MAX_VISUAL_DESCRIPTION_CHARS,
   SIGNATURE_TTL_SECONDS,
@@ -36,6 +37,8 @@ export type ScannedDrink = {
   menuDescription: string | null;
   /** Card display text: the printed description when the menu has one, else the AI-written typical blurb. */
   description: string | null;
+  /** One-sentence taste summary shown in the card's expanded state. */
+  tasteNote: string | null;
   price: string | null;
   nutrition: DrinkNutrition;
 };
@@ -75,7 +78,11 @@ const PROMPT =
   'exact printed name for each drink. Copy the drink\'s printed description verbatim ' +
   'into menu_description, or null when no description is printed for it. Separately, ' +
   'write one or two short sentences into typical_description for every drink, describing ' +
-  'its typical ingredients and character the way a menu blurb would. Estimate ' +
+  'its typical ingredients and character the way a menu blurb would. Then write ' +
+  'taste_note for every drink as an expert mixologist would: one sentence (20-40 words) on ' +
+  'what it tastes like — overall sweetness, tartness or bitterness, its most noticeable ' +
+  'flavor notes, body, and finish — based on its printed or typical ingredients, naming ' +
+  'only flavors most people would actually notice. Estimate ' +
   'nutrition per standard serving. Set ' +
   'venue_name only if it is visible on the menu, otherwise null. Sort every drink into ' +
   'exactly one category of shots, beer, exotic, cocktails, or wine — pick the closest ' +
@@ -125,6 +132,13 @@ const MENU_SCHEMA = {
               'character, written like a menu blurb. Plain menu prose, never an appearance or ' +
               'image-generation prompt.',
           },
+          taste_note: {
+            type: 'string',
+            description:
+              'One sentence (20-40 words) on what the drink tastes like to an average person — ' +
+              'overall sweetness, tartness, bitterness, notable flavor notes, body, alcohol warmth, ' +
+              'and finish. Only flavors most people would actually notice; never a list of ingredients.',
+          },
           price: {
             type: ['string', 'null'],
             description: 'The price exactly as printed, including any currency symbol. Null if no price is shown.',
@@ -153,7 +167,7 @@ const MENU_SCHEMA = {
             additionalProperties: false,
           },
         },
-        required: ['name', 'category', 'visual_description', 'menu_description', 'typical_description', 'price', 'nutrition'],
+        required: ['name', 'category', 'visual_description', 'menu_description', 'typical_description', 'taste_note', 'price', 'nutrition'],
         additionalProperties: false,
       },
     },
@@ -185,6 +199,7 @@ type RawDrink = {
   visual_description?: string | null;
   menu_description?: string | null;
   typical_description?: string | null;
+  taste_note?: string | null;
   price?: string | null;
   nutrition?: RawNutrition | null;
 };
@@ -288,12 +303,15 @@ function normalizeDrink(raw: RawDrink): ScannedDrink | null {
     typeof raw.typical_description === 'string'
       ? raw.typical_description.trim().slice(0, MAX_TYPICAL_DESCRIPTION_CHARS)
       : '';
+  const trimmedTaste =
+    typeof raw.taste_note === 'string' ? raw.taste_note.trim().slice(0, MAX_TASTE_NOTE_CHARS) : '';
   return {
     name,
     category: normalizeCategory(raw.category),
     visualDescription,
     menuDescription,
     description: menuDescription ?? (trimmedTypical.length > 0 ? trimmedTypical : null),
+    tasteNote: trimmedTaste.length > 0 ? trimmedTaste : null,
     price: typeof raw.price === 'string' && raw.price.trim().length > 0 ? raw.price.trim() : null,
     nutrition: normalizeNutrition(raw.nutrition),
   };

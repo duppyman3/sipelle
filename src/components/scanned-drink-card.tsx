@@ -99,6 +99,13 @@ export function ScannedDrinkCard({
               style={{ fontSize: 14, lineHeight: 19, color: colors.body }}>
               {drink.description}
             </Text>
+            {/* Taste notes join the expanded reveal only — hidden until the card opens. */}
+            {expanded && drink.tasteNote ? (
+              <Text style={{ fontSize: 14, lineHeight: 19, color: colors.body }}>
+                <Text style={{ fontWeight: '600' }}>Taste Notes: </Text>
+                {drink.tasteNote}
+              </Text>
+            ) : null}
             <ExpandChevron expanded={expanded} onToggle={onToggle} />
           </>
         ) : null}
