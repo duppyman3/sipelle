@@ -15,9 +15,10 @@ import {
   SCAN_FALLBACK_MODEL,
   signMenuScan,
   type ChatCompletion,
+  type MenuScan,
   type SignedMenuScan,
 } from '../_shared/menu.ts';
-import { lookupDrinkImages, publicImageUrl } from '../_shared/image-cache.ts';
+import { logScanDrinks, lookupDrinkImages, publicImageUrl } from '../_shared/image-cache.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -106,8 +107,10 @@ Deno.serve(async (req) => {
     return json(502, { error: 'The menu could not be read. Try a clearer photo.' });
   }
 
-  const scan = await signMenuScan(normalizeMenuScan(parsed), deviceId);
+  const normalized = normalizeMenuScan(parsed);
+  const scan = await signMenuScan(normalized, deviceId);
   await attachCachedImages(scan);
+  logScanOffPath(normalized, scan, deviceId);
   return json(200, scan);
 });
 
@@ -130,6 +133,32 @@ async function attachCachedImages(scan: SignedMenuScan): Promise<void> {
     if (path) {
       drink.imageUrl = publicImageUrl(path);
     }
+  }
+}
+
+/**
+ * Records each drink's cache-key inputs to scan_drink_log, off the response path.
+ * Pairs the normalized drinks (which still carry menuDescription) with the signed
+ * drinks (which carry imageKey/imageUrl) by index — signMenuScan preserves order.
+ * cache_hit=false also covers a failed cache lookup; that failure is already logged.
+ * Diagnostics must never delay or fail a scan, so failures only log.
+ */
+function logScanOffPath(normalized: MenuScan, scan: SignedMenuScan, deviceId: string): void {
+  const rows = scan.drinks.map((drink, i) => ({
+    deviceId,
+    name: drink.name,
+    menuDescription: normalized.drinks[i]?.menuDescription ?? null,
+    imageKey: drink.imageKey,
+    cacheHit: drink.imageUrl !== undefined,
+  }));
+  const pending = logScanDrinks(rows).catch((err) => {
+    console.error('scan drink log failed', err);
+  });
+  const runtime = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+  if (runtime?.waitUntil) {
+    runtime.waitUntil(pending);
+  } else {
+    void pending;
   }
 }
 

@@ -128,3 +128,39 @@ export async function storeDrinkImage(imageKey: string, jpegBytes: Uint8Array, r
     throw new Error(`drink image insert failed (${insert.status})`);
   }
 }
+
+/** One scan_drink_log row: the cache-key inputs one scanned drink produced. */
+export type ScanDrinkLogRow = {
+  deviceId: string;
+  name: string;
+  menuDescription: string | null;
+  imageKey: string;
+  cacheHit: boolean;
+};
+
+/**
+ * Bulk-inserts per-drink cache-key diagnostics. Rows are debug data (30-day
+ * retention via pg_cron); callers must treat failure as ignorable — never let
+ * logging affect the scan response.
+ */
+export async function logScanDrinks(rows: ScanDrinkLogRow[]): Promise<void> {
+  if (rows.length === 0) {
+    return;
+  }
+  const res = await fetch(`${supabaseUrl()}/rest/v1/scan_drink_log`, {
+    method: 'POST',
+    headers: restHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(
+      rows.map((row) => ({
+        device_id: row.deviceId,
+        name: row.name,
+        menu_description: row.menuDescription,
+        image_key: row.imageKey,
+        cache_hit: row.cacheHit,
+      })),
+    ),
+  });
+  if (!res.ok) {
+    throw new Error(`scan drink log insert failed (${res.status})`);
+  }
+}
