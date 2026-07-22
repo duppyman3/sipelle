@@ -37,7 +37,7 @@ export type ScannedDrink = {
   menuDescription: string | null;
   /** Card display text: the printed description when the menu has one, else the AI-written typical blurb. */
   description: string | null;
-  /** One-sentence taste summary shown in the card's expanded state. */
+  /** One-sentence taste summary shown under the card's description. */
   tasteNote: string | null;
   price: string | null;
   nutrition: DrinkNutrition;

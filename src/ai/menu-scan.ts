@@ -16,7 +16,7 @@ export type ScannedDrink = {
   /** Display text: the printed menu description verbatim, else an AI-written typical blurb.
    *  Absent on older backends — the card then renders no description. */
   description?: string | null;
-  /** One-sentence taste summary, shown only when the card is expanded. Absent on older backends. */
+  /** One-sentence taste summary, shown under the card's description. Absent on older backends. */
   tasteNote?: string | null;
   price: string | null;
   nutrition: DrinkNutrition;

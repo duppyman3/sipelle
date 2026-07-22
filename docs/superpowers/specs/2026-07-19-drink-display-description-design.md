@@ -100,10 +100,18 @@ carries it through unchanged.
 Optional (`?`) on both types is what makes old-app/new-server and new-app/old-server pairs safe: a
 missing field is a no-op, never a crash.
 
+**Update 2026-07-22:** the expand/collapse accordion was removed at the user's request — the card is no
+longer pressable and there is no chevron. The full `description` renders unclamped (no 3-line collapse)
+and the Taste Notes line always renders. The absent-`description` handling and the never-fall-back-to-
+`visualDescription` rule above are unchanged. Separately, bare printed prices now display with a `$`
+prefix via the `displayPrice` helper in `src/components/scanned-drink-card.tsx` (a value starting with a
+digit gets `$`; printed symbols like `$14`/`€9` pass through); the server still extracts the price
+verbatim.
+
 ## Taste Notes (added 2026-07-19)
 
 `scan-menu` gains a second display-only field, per-drink **`tasteNote`** — one sentence (20–40 words)
-on what the drink actually tastes like, shown by the card **only in its expanded state**, under a bold
+on what the drink actually tastes like, shown by the card **only in its expanded state** (until 2026-07-22; now shown unconditionally — see the update note at the end of this section), under a bold
 inline **"Taste Notes:"** label ahead of the sentence.
 
 - **Content rule.** The sentence is distilled from the user's mixologist prompt file into a single
@@ -122,8 +130,17 @@ inline **"Taste Notes:"** label ahead of the sentence.
   truncation-aware-hide idea is dropped rather than deferred.
 - **Deliberately not built.** The same mixologist prompt file also specifies a longer 75–150-word
   detailed description and a set of 3–8 short flavor tags per drink. Neither is built: the card's
-  collapsed body is the existing `description`, and the expanded state shows only the one-sentence
+  body is the existing `description`, and the card shows only the one-sentence
   `tasteNote`. Adding the long description or tag chips is a future call, not part of this change.
+
+**Update 2026-07-22:** the accordion was removed at the user's request — cards no longer expand or
+collapse, there is no chevron, and the card is not pressable. The `tasteNote` line and the full
+`description` now render on **every** card unconditionally. The server contract is untouched: the
+`required` schema field, the `MAX_TASTE_NOTE_CHARS` clamp, and the always-generated rule are all
+unchanged — only the card's presentation moved from expanded-only to always-visible. The "Supersedes
+the truncation-aware chevron" note above is now moot: with no chevron at all there is nothing to show
+or hide, and the truncation-aware-hide idea stays dropped. (Bare printed prices also gained a
+client-side `$` prefix via `displayPrice` — see the Client-behavior update.)
 
 ## Verification
 

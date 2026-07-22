@@ -16,7 +16,6 @@ export const enterSoft = FadeInDown.duration(500).easing(softEasing).withInitial
 
 export const pressTiming = { duration: 120, easing: softEasing };
 
-// Tap-to-expand card accordion: 260ms soft-eased chevron rotation and card
-// height layout transition (both module scope, per the rationale above).
-export const expandTiming = { duration: 260, easing: softEasing };
+// The layout glide behind the results footer: a 260ms soft-eased position
+// transition (module scope, per the rationale above).
 export const expandTransition = LinearTransition.duration(260).easing(softEasing);

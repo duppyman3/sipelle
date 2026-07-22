@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { ChevronDown, Lock, RotateCcw } from 'lucide-react-native';
+import { Lock, RotateCcw } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { Text, View, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
@@ -9,7 +9,7 @@ import Svg, { Ellipse } from 'react-native-svg';
 import { type DrinkNutrition } from '@/ai/menu-scan';
 import { track } from '@/analytics/posthog';
 import { PressableScale } from '@/components/pressable-scale';
-import { expandTiming, expandTransition, softEasing } from '@/constants/motion';
+import { softEasing } from '@/constants/motion';
 import { colors, fonts, shadows } from '@/constants/theme';
 import { useShowNutrition } from '@/data/nutrition-pref';
 import { PREMIUM_AVAILABLE, useIsPremium } from '@/data/premium';
@@ -36,22 +36,15 @@ const TILE_BASE: ViewStyle = {
   boxShadow: shadows.tile,
 };
 
-export function ScannedDrinkCard({
-  drink,
-  expanded,
-  onToggle,
-}: {
-  drink: SessionDrink;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
+// Menus often print bare numbers ("16") — give them a currency symbol; prices
+// already carrying one ("$14") pass through untouched.
+function displayPrice(price: string): string {
+  return /^\d/.test(price) ? `$${price}` : price;
+}
+
+export function ScannedDrinkCard({ drink }: { drink: SessionDrink }) {
   return (
-    <PressableScale
-      // Pressable defaults accessible=true, which flattens the subtree on iOS and
-      // hides the nested lock/retry controls from VoiceOver.
-      accessible={false}
-      onPress={onToggle}
-      layout={expandTransition}
+    <View
       style={{
         flexDirection: 'row',
         gap: 14,
@@ -86,7 +79,7 @@ export function ScannedDrinkCard({
                 paddingHorizontal: 11,
                 boxShadow: shadows.pill,
               }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink }}>{drink.price}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink }}>{displayPrice(drink.price)}</Text>
             </View>
           ) : null}
         </View>
@@ -94,47 +87,20 @@ export function ScannedDrinkCard({
         {/* Show drink.description only — never the image-generation visualDescription. */}
         {drink.description ? (
           <>
-            <Text
-              numberOfLines={expanded ? undefined : 3}
-              style={{ fontSize: 14, lineHeight: 19, color: colors.body }}>
+            <Text style={{ fontSize: 14, lineHeight: 19, color: colors.body }}>
               {drink.description}
             </Text>
-            {/* Taste notes join the expanded reveal only — hidden until the card opens. */}
-            {expanded && drink.tasteNote ? (
+            {/* Taste notes always show under the description when the drink has one. */}
+            {drink.tasteNote ? (
               <Text style={{ fontSize: 14, lineHeight: 19, color: colors.body }}>
                 <Text style={{ fontWeight: '600' }}>Taste Notes: </Text>
                 {drink.tasteNote}
               </Text>
             ) : null}
-            <ExpandChevron expanded={expanded} onToggle={onToggle} />
           </>
         ) : null}
       </View>
-    </PressableScale>
-  );
-}
-
-function ExpandChevron({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) {
-  const turn = useSharedValue(expanded ? 1 : 0);
-  useEffect(() => {
-    turn.set(withTiming(expanded ? 1 : 0, expandTiming));
-  }, [turn, expanded]);
-  const chevronStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${turn.get() * 180}deg` }],
-  }));
-
-  return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityState={{ expanded }}
-      accessibilityLabel={expanded ? 'Hide full description' : 'Show full description'}
-      hitSlop={12}
-      onPress={onToggle}
-      style={{ alignSelf: 'flex-end' }}>
-      <Animated.View style={chevronStyle}>
-        <ChevronDown size={16} color={colors.muted} strokeWidth={2} />
-      </Animated.View>
-    </PressableScale>
+    </View>
   );
 }
 

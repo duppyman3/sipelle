@@ -155,7 +155,6 @@ function ReadyResults({ session, initialFilter }: { session: ScanSession; initia
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState(initialFilter);
   const [query, setQuery] = useState('');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const search = searchKey(query);
   // session.drinks is already grouped by RESULTS_CATEGORY_ORDER at store time.
   const byCategory = filter === 'all' ? session.drinks : session.drinks.filter((drink) => drink.category === filter);
@@ -209,12 +208,7 @@ function ReadyResults({ session, initialFilter }: { session: ScanSession; initia
           {drinks.length > 0 ? (
             <View style={{ gap: 20, marginTop: 24 }}>
               {drinks.map((drink) => (
-                <ScannedDrinkCard
-                  key={drink.id}
-                  drink={drink}
-                  expanded={drink.id === expandedId}
-                  onToggle={() => setExpandedId((current) => (current === drink.id ? null : drink.id))}
-                />
+                <ScannedDrinkCard key={drink.id} drink={drink} />
               ))}
             </View>
           ) : search !== '' ? (
