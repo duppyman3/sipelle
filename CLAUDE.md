@@ -63,6 +63,14 @@ In app code, the tokens are already ported to `src/constants/theme.ts` (colors, 
 - Live pages: `/` (landing), `/privacy` (privacy policy), `/terms` (terms of service), `/support` (contact info@sipelle.app) — extensionless URLs are canonical (`.html` forms 307-redirect to them). The site also serves `/status.json`, the app's remote kill-switch (see the Remote status kill-switch section). `src/app/paywall.tsx` links to `https://www.sipelle.app/terms` and `/privacy`. The terms copy was finalized 2026-07-14 (effective July 14, 2026; entity Nicholas Titus; Florida law; contact info@sipelle.app — email only, no mailing address).
 - The Edge Functions send `HTTP-Referer: https://www.sipelle.app` on OpenRouter calls (`supabase/functions/_shared/openrouter.ts`).
 
+## App Store (iOS)
+
+- App Store Connect app **Sipelle** — ASC App ID `6792309625`, bundle `app.sipelle`, Apple team `6QDZR5TF3X` (Nicholas Titus, Individual), Apple account `duppyman3@gmail.com`. First build 1.0.0 (2) uploaded 2026-07-18.
+- **Ship via EAS from Windows** (no Mac): `npx eas-cli@latest build -p ios --profile production`, then `npx eas-cli@latest submit -p ios --latest`. The `submit.production.ios` block in `eas.json` (appleId/ascAppId/appleTeamId) makes submits prompt-free. Run both in a real interactive terminal — Apple login prompts hang in non-interactive shells (including this session's `!` commands).
+- **No secrets in the repo**: the App Store Connect API key "[Expo] EAS Submit" (key ID `LHJDVMWJBQ`) and the distribution certificate/provisioning profile live on EAS servers; everything committed here is a public identifier. Never download the `.p8` key into the repo.
+- **Versioning**: `version` in `app.json` is the marketing version, bumped by hand; the iOS build number is stored remotely on EAS and auto-increments per production build (`autoIncrement: true`, `appVersionSource: "remote"`). Same version + new build = no new TestFlight beta review; a version bump re-triggers beta review for external testers (internal testers never wait on review).
+- Store listing copy, age-rating answers (alcohol references → Frequent/Intense, expect 17+/18+), and App Privacy declarations (Device ID, Product Interaction, Photos, Crash Data — all not-linked, no tracking; on-device first name deliberately undeclared) are drafted in the 2026-07-18 session's `appstore-listing.md`.
+
 
 
 

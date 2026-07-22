@@ -29,6 +29,12 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "duppyman3@gmail.com",
+        "ascAppId": "6792309625",
+        "appleTeamId": "6QDZR5TF3X"
+      }
+    }
   }
 }
