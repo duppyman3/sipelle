@@ -2,11 +2,6 @@ import { AiError, postAiFunction } from '@/ai/backend';
 import { getDeviceId } from '@/data/device-id';
 import type { DrinkCategory } from '@/data/menu';
 
-// TEMPORARY (2026-07-19): points at scan-menu-v2 so the scan-menu deployment the
-// Apple-review build calls stays frozen. After review clears and scan-menu is
-// redeployed from this same source, revert to 'scan-menu' and retire the v2 function.
-const SCAN_FN = 'scan-menu-v2';
-
 export type DrinkNutrition = {
   calories: number | null;
   abvPercent: number | null;
@@ -46,7 +41,7 @@ export type MenuScan = {
 
 /** Sends a menu photo (base64 JPEG) through the Sipelle backend and returns the extracted drinks. */
 export async function scanMenuPhoto(base64Jpeg: string): Promise<MenuScan> {
-  const result = await postAiFunction<MenuScan>(SCAN_FN, {
+  const result = await postAiFunction<MenuScan>('scan-menu', {
     deviceId: getDeviceId(),
     imageBase64: base64Jpeg,
   });

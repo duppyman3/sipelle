@@ -28,7 +28,7 @@ export function hasAiBackend(): boolean {
 
 /** POSTs a JSON body to a Sipelle Edge Function and returns the parsed response, throwing AiError on failure. */
 export async function postAiFunction<T>(
-  fn: 'scan-menu' | 'scan-menu-v2' | 'drink-image',
+  fn: 'scan-menu' | 'drink-image',
   body: object,
   timeoutMs = 150_000,
 ): Promise<T> {
