@@ -102,7 +102,7 @@ export default function Home() {
 
               <PressableScale
                 accessibilityRole="button"
-                accessibilityLabel="Scan Menu"
+                accessibilityLabel="Drink Menu"
                 onPress={scanMenu}
                 style={{
                   alignSelf: 'center',
@@ -117,8 +117,15 @@ export default function Home() {
                   gap: 6,
                 }}>
                 <Camera size={36} color={colors.ink} strokeWidth={2} />
-                <Text style={{ fontFamily: fonts.hand, fontSize: 24, lineHeight: 26, color: colors.ink }}>
-                  Scan Menu
+                <Text
+                  style={{
+                    fontFamily: fonts.hand,
+                    fontSize: 24,
+                    lineHeight: 26,
+                    color: colors.ink,
+                    textAlign: 'center',
+                  }}>
+                  Drink Menu
                 </Text>
               </PressableScale>
             </>
